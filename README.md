@@ -9,6 +9,7 @@ What this package does is:
  - if sql execution fails it saves the exception to database and prevents further migration until you resolve it manually
 
 ### To get started:
+ - npm install `node-db-migration`
  - create the directory with sql migrations somewhere. You can configure it with `directoryWithScripts`
  - put all .sql migration files there with the name `date-name.sql`, where date is some kind of date format e.g. 201705231245-add-pets-table.sql. You can configure it with `dateFormat`
  - integrate the code bellow into your project:
