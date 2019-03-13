@@ -47,7 +47,7 @@ CREATE UNIQUE INDEX migrations_name_uindex ON ${this.migrationTable} (name);
     }
 
     getScriptStr(script, callback){
-        let filePath = path.join(__dirname , this.directoryWithScripts, script);
+        let filePath = path.join(this.directoryWithScripts, script);
         fs.readFile(filePath, {encoding: 'utf-8'}, (err, data) => {
             if (err) {
                 throw JSON.stringify(err);

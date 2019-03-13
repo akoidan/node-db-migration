@@ -1,11 +1,8 @@
 {
   "name": "node-db-migration",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "Database migration script for nodejs",
   "main": "index.js",
-  "files": [
-    "index.js", "README.md"
-  ],
   "repository": {
     "type": "git",
     "url": "git+https://github.com/akoidan/node-db-migration.git"
