@@ -1,0 +1,26 @@
+{
+  "name": "node-db-migration",
+  "version": "1.0.0",
+  "description": "Database migration script for nodejs",
+  "main": "index.js",
+  "files": [
+    "index.js", "README.md"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/akoidan/node-db-migration.git"
+  },
+  "keywords": [
+    "db",
+    "migration"
+  ],
+  "author": "Andrew Koidan <deathangel908@gmail.com>",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/akoidan/node-db-migration/issues"
+  },
+  "homepage": "https://github.com/akoidan/node-db-migration#readme",
+  "dependencies": {
+    "moment": "*"
+  }
+}
