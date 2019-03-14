@@ -89,10 +89,9 @@ node yourFile.js command
 class MyDriver extends CommonDriver {
 
     constructor() {
-        this.dbRunner = (sql, params, cb) => {
-             yourRunner.queryDb(...params); // inject your driver here
-        }
-        this.migrationTable = 'migrations';
+        super((sql, params, cb) => {
+             yourRunner.queryDb(sql, params, cb); // inject your driver here if it has custom format
+        })
     }
     
     existsSql() {
