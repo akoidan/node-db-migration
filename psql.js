@@ -7,8 +7,7 @@ const client = new Client({
 
 client.connect(function() {
     let migrations = new CommandsRunner({
-        driver: new PsqlDriver(client.query.bind(client)),
-        migrationTable: 'migrations', // migration table name, this param is not required
+        driver: new PsqlDriver(client.query.bind(client), 'migrationTableName'),
         directoryWithScripts: __dirname + '/diff', // path of the directory with sql files
         dateFormat: 'YYYYMMDDHHmm', // sql file names date pattern, , this param is not required
     });
