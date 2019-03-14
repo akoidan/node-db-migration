@@ -2,51 +2,129 @@ const fs = require("fs");
 const path = require('path');
 const moment = require('moment');
 
-class Migrations {
-
-    constructor({migrationTable = 'migrations', directoryWithScripts = './diff', dateFormat = 'YYYYMMDDHHmm', dbRunner}) {
+class CommonDriver {
+    constructor(dbRunner, migrationTable = 'migrations') {
         if (!dbRunner) {
             throw `dbRunner can't be null`;
         }
         this.dbRunner = dbRunner;
         this.migrationTable = migrationTable;
-        this.directoryWithScripts = directoryWithScripts;
-        this.dateFormat = dateFormat;
     }
 
-    checkIfExists(callback) {
-        this.dbRunner('SHOW TABLES LIKE ?', [this.migrationTable], (ok, err) => {
-            if (err) {
+    getDbMigrations() {
+        return `select * from ${this.migrationTable}`
+    }
+
+    removeAllMigrations() {
+        return `update ${this.migrationTable} set error_if_happened = null where error_if_happened is not null`
+    }
+
+    markExecuted() {
+        return `insert into ${this.migrationTable} (name, created, error_if_happened) values (?, ?, ?)`
+    }
+
+    createUniqueTableIndex() {
+        return `CREATE UNIQUE INDEX migrations_name_uindex ON ${this.migrationTable} (name)`;
+    }
+
+    createTableSql() {
+        return `CREATE TABLE ${this.migrationTable}
+(
+    id bigserial PRIMARY KEY ,
+    name VARCHAR(128) NOT NULL,
+    run_on TIMESTAMP DEFAULT CURRENT_TIMESTAMP NOT NULL,
+    created TIMESTAMP DEFAULT CURRENT_TIMESTAMP NOT NULL,
+    error_if_happened text
+)`;
+    }
+
+}
+
+class PsqlDriver extends CommonDriver {
+    existsSql() {
+        return `SELECT 1 FROM information_schema.tables WHERE table_name = '${this.migrationTable}'`;
+    }
+
+    markExecuted() {
+        return `insert into ${this.migrationTable} (name, created, error_if_happened) values ($1, $2, $3)`
+    }
+
+    runSqlError(sql, params, cb) {
+        this.dbRunner(sql, params, function(error, result) {
+            return cb(error);
+        })
+    }
+
+    runSql(sql, params, cb) {
+        this.dbRunner(sql, params, function(error, result) {
+            if (error) {
                 throw JSON.stringify(err);
             }
-            callback(ok.length > 0);
-        });
+            return cb(result.rows);
+        })
     }
 
-    getCreateTable(migrationName) {
-        return `CREATE TABLE ${migrationName}
+
+}
+
+class MysqlDriver extends CommonDriver {
+    existsSql() {
+        return `SHOW TABLES LIKE '${this.migrationTable}'`;
+    }
+
+
+    createTableSql() {
+        return `CREATE TABLE ${this.migrationTable}
 (
     id INT PRIMARY KEY AUTO_INCREMENT,
     name VARCHAR(128) NOT NULL,
     run_on TIMESTAMP DEFAULT CURRENT_TIMESTAMP NOT NULL,
     created TIMESTAMP DEFAULT CURRENT_TIMESTAMP NOT NULL,
     error_if_happened LONGTEXT
-);
-CREATE UNIQUE INDEX migrations_name_uindex ON ${this.migrationTable} (name);
-`;
+) `;
     }
 
-    doInit(callback) {
-        this.dbRunner(this.getCreateTable(this.migrationTable), [], (ok, err) => {
-            if (err) {
+    runSql(sql, params, cb) {
+        this.dbRunner(sql, params, function(error, result, fields) {
+            if (error) {
                 throw JSON.stringify(err);
             }
-            console.log('DB has been successfully initialized');
-            callback();
+            return cb(result);
         })
     }
 
-    getScriptStr(script, callback){
+    runSqlError(sql, params, cb) {
+        this.dbRunner(sql, params, function(error, result, fields) {
+            return cb(error);
+        })
+    }
+
+}
+
+class Migrations {
+
+    constructor({directoryWithScripts, dateFormat = 'YYYYMMDDHHmm', driver}) {
+        this.driver = driver;
+        this.directoryWithScripts = directoryWithScripts;
+        this.dateFormat = dateFormat;
+    }
+
+    checkIfExists(callback) {
+        this.driver.runSql(this.driver.existsSql(), [], (rows) => {
+            callback(rows.length > 0);
+        });
+    }
+
+    doInit(callback) {
+        this.driver.runSql(this.driver.createTableSql(), [], () => {
+            this.driver.runSql(this.driver.createUniqueTableIndex(), [], () => {
+                console.log('DB has been successfully initialized');
+                callback();
+            });
+        });
+    }
+
+    getScriptStr(script, callback) {
         let filePath = path.join(this.directoryWithScripts, script);
         fs.readFile(filePath, {encoding: 'utf-8'}, (err, data) => {
             if (err) {
@@ -66,8 +144,11 @@ CREATE UNIQUE INDEX migrations_name_uindex ON ${this.migrationTable} (name);
                 files = files.filter(e => exclude.findIndex(f => f.name == e) < 0);
             }
             let result = [];
-            files.forEach(e => result.push({name: e, created: moment(e, this.dateFormat).toDate()}));
-            result = result.sort((a, b) =>  a.created.getTime() - b.created.getTime());
+            files.forEach(e => result.push({
+                name: e,
+                created: moment(e, this.dateFormat).toDate()
+            }));
+            result = result.sort((a, b) => a.created.getTime() - b.created.getTime());
             callback(result);
         });
     }
@@ -75,9 +156,9 @@ CREATE UNIQUE INDEX migrations_name_uindex ON ${this.migrationTable} (name);
     runScript(fileName, created, next, failSilently = false) {
         this.getScriptStr(fileName, query => {
             console.log(`\n\n\nExecuting ${fileName}:\n`);
-            this.dbRunner(query, null, (ok, migrationErr) => {
+            this.driver.runSqlError(query, null, (migrationErr) => {
                 migrationErr = migrationErr ? JSON.stringify(migrationErr) : null;
-                this.markExecuted(fileName, created, migrationErr, ()=> {
+                this.markExecuted(fileName, created, migrationErr, () => {
                     if (migrationErr) {
                         if (failSilently) {
                             console.error(migrationErr);
@@ -89,20 +170,13 @@ CREATE UNIQUE INDEX migrations_name_uindex ON ${this.migrationTable} (name);
                         next();
                     }
                 })
-            })
+            });
         })
     }
 
     markExecuted(fileName, created, migrationErr, callback) {
         console.log(`Marking ${fileName} as executed`);
-        this.dbRunner(`insert into ${this.migrationTable} (name, created, error_if_happened) values (?, ?, ?)`,
-            [fileName, created, migrationErr], (ok, errReport) => {
-                if (errReport) {
-                    throw JSON.stringify(errReport);
-                } else {
-                    callback();
-                }
-            });
+        this.driver.runSql(this.driver.markExecuted(), [fileName, created, migrationErr], callback);
     }
 
     findNewMigrations(callback, failSilently = false) {
@@ -114,12 +188,7 @@ CREATE UNIQUE INDEX migrations_name_uindex ON ${this.migrationTable} (name);
     }
 
     getDbMigrations(callback) {
-        this.dbRunner(`select * from ${this.migrationTable}`, [], (ok, err) => {
-            if (err) {
-                throw JSON.stringify(err);
-            }
-            callback(ok);
-        });
+        this.driver.runSql(this.driver.getDbMigrations(), [], callback);
     }
 
     getCompletedMigrations(callback, failSilently = false) {
@@ -127,7 +196,7 @@ CREATE UNIQUE INDEX migrations_name_uindex ON ${this.migrationTable} (name);
             if (!failSilently) {
                 res.forEach(r => {
                     if (r.error_if_happened) {
-                        throw `Can't start migrations while having a failed one. Run "resolve" first. Error details: \n${JSON.stringify(r) }`
+                        throw `Can't start migrations while having a failed one. Run "resolve" first. Error details: \n${JSON.stringify(r)}`
                     }
                 });
             }
@@ -159,18 +228,14 @@ CREATE UNIQUE INDEX migrations_name_uindex ON ${this.migrationTable} (name);
     }
 
     resolveAllMigrations(callback) {
-        this.dbRunner(`update ${this.migrationTable} set error_if_happened = null where error_if_happened is not null`, [], (ok, err) =>{
-            if (err) {
-                throw JSON.stringify(err);
-            } else {
+        this.driver.runSql(this.driver.removeAllMigrations(), [], (ok) => {
                 console.log(`${ok.affectedRows} migrations marked as resolved`);
                 callback();
-            }
-        })
+            })
     }
 }
 
-module.exports = class CommandsRunner extends Migrations {
+class CommandsRunner extends Migrations {
 
     constructor(config) {
         super(config);
@@ -231,7 +296,7 @@ module.exports = class CommandsRunner extends Migrations {
     findAndRunMigrations(callback, failSilently = false) {
         this.findNewMigrations(newMigrations => {
             if (newMigrations.length > 0) {
-                console.log(`Migrations to run:\n${ newMigrations.map(e => e.name).join('\n')}`);
+                console.log(`Migrations to run:\n${newMigrations.map(e => e.name).join('\n')}`);
                 this.runMigrations(newMigrations, failSilently, callback);
             } else {
                 console.log("No new migrations are available");
@@ -252,7 +317,7 @@ module.exports = class CommandsRunner extends Migrations {
     }
 
     printMigrations(migrations) {
-        if (migrations.length > 0 ){
+        if (migrations.length > 0) {
             console.log(`New migrations found: \n${migrations.map(e => e.name).join('\n')}`);
         } else {
             console.log("No new migrations are available");
@@ -267,7 +332,7 @@ module.exports = class CommandsRunner extends Migrations {
     }
 
     init(callback) {
-        this.checkIfExists( (inited) =>{
+        this.checkIfExists((inited) => {
             if (inited) {
                 throw "DB is already initialized";
             } else {
@@ -277,4 +342,6 @@ module.exports = class CommandsRunner extends Migrations {
     }
 }
 
-
+module.exports = {
+    CommandsRunner, Migrations, PsqlDriver, CommonDriver, MysqlDriver
+}
