@@ -10,9 +10,9 @@ var connection = mysql.createConnection({
 
 connection.connect(function(err) {
     let migrations = new CommandsRunner({
-        driver: new MysqlDriver(connection.query.bind(connection), 'migrationTableName'),
+        driver: new MysqlDriver(connection.query.bind(connection), 'daS'),
         directoryWithScripts: __dirname + '/diff', // path of the directory with sql files
         dateFormat: 'YYYYMMDDHHmm', // sql file names date pattern, , this param is not required
     });
-    migrations.run('list')
+    migrations.run('migrate')
 });

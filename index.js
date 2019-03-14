@@ -8,7 +8,12 @@ class CommonDriver {
             throw `dbRunner can't be null`;
         }
         this.dbRunner = dbRunner;
-        this.migrationTable = migrationTable;
+        let tName = migrationTable.toLocaleLowerCase();
+        if (tName !== migrationTable) {
+            //prevent bugs like in pgsql
+            console.error(`Renaming migration table name to lowercase ${migrationTable} -> ${tName}`);
+        }
+        this.migrationTable = tName;
     }
 
     getDbMigrations() {
@@ -58,7 +63,7 @@ class PsqlDriver extends CommonDriver {
     runSql(sql, params, cb) {
         this.dbRunner(sql, params, function(error, result) {
             if (error) {
-                throw JSON.stringify(err);
+                throw JSON.stringify(error);
             }
             return cb(result.rows);
         })
@@ -87,7 +92,7 @@ class MysqlDriver extends CommonDriver {
     runSql(sql, params, cb) {
         this.dbRunner(sql, params, function(error, result, fields) {
             if (error) {
-                throw JSON.stringify(err);
+                throw JSON.stringify(error);
             }
             return cb(result);
         })

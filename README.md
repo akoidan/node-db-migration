@@ -2,7 +2,7 @@
 
 ## sourcecontrol for your database
 
-This is the dummies and simpliest package that allows you to automatically install new migrations on your database.
+This is the dummies and simplest package that allows you to automatically install new migrations on your database. Just write your migration scripts in bare sql and this script will do the rest of magic for you!
 
 ## What this package does is:
  - creates a database table `migrations` (you can configure it with `migrationTable`) that keeps a track on all migration scripts
@@ -31,7 +31,7 @@ var connection = mysql.createConnection({
 
 connection.connect(function(err) {
     let migrations = new CommandsRunner({
-        driver: new MysqlDriver(connection.query.bind(connection), 'migrationTable'),
+        driver: new MysqlDriver(connection.query.bind(connection), 'migrations'), //migration table name, not required, should be in lowercase!
         directoryWithScripts: __dirname + '/diff', // path of the directory with sql files
         dateFormat: 'YYYYMMDDHHmm', // sql file names date pattern, , this param is not required
     });
@@ -52,7 +52,7 @@ const client = new Client({
 
 client.connect(function() {
     let migrations = new CommandsRunner({
-        driver: new PsqlDriver(client.query.bind(client), 'migrationTable'),
+        driver: new PsqlDriver(client.query.bind(client), 'migrations'), // migration table name, not required, should be in lowercase!
         directoryWithScripts: __dirname + '/diff', // path of the directory with sql files
         dateFormat: 'YYYYMMDDHHmm', // sql file names date pattern, , this param is not required
     });
