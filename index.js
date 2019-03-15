@@ -440,7 +440,7 @@ class CommandsRunner extends Migrations {
 
     printMigrations(migrations) {
         if (migrations.length > 0) {
-            console.log(`New migrations found: \n${migrations.map(e => e.name).join('\n')}`);
+            console.log(`New migrations found: \n  - ${migrations.map(e => e.name).join('\n  - ')}`);
         } else {
             console.log("No new migrations are available");
         }

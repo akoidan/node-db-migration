@@ -8,6 +8,6 @@ let migrations = new CommandsRunner({
     driver: new SQLite3Driver(db),
     directoryWithScripts: __dirname + '/diff',
 });
-migrations.run()
+migrations.run('list')
 
 
