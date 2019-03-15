@@ -6,8 +6,7 @@ var db = new sqlite3.Database('./test');
 
 let migrations = new CommandsRunner({
     driver: new SQLite3Driver(db),
-    directoryWithScripts: __dirname + '/diff', // path of the directory with sql files
-    dateFormat: 'YYYYMMDDHHmm', // sql file names date pattern, , this param is not required
+    directoryWithScripts: __dirname + '/diff',
 });
 migrations.run()
 
