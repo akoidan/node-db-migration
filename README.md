@@ -1,8 +1,6 @@
-# node-db-migration
+# node-db-migration [![GitHub license](https://img.shields.io/badge/license-MIT-blue.svg)](https://github.com/akoidan/node-db-migration/blob/master/LICENSE) [![npm version](https://img.shields.io/npm/v/node-db-migration.svg)](https://www.npmjs.com/package/node-db-migration)
 
-## sourcecontrol for your database
-
-This is the dummies and simplest package that allows you to automatically install new migrations on your database. Just write your migration scripts in bare sql and this script will do the rest of magic for you!
+Source control for your database. This is the dummies and simplest package that allows you to automatically install new migrations on your database. Just write your migration scripts in bare sql and this script will do the rest of magic for you!
 
 ## What this package does is:
  - creates a database table `migrations` (you can configure it with `migrationTable`) that keeps a track on all migration scripts
@@ -67,7 +65,7 @@ let migrations = new CommandsRunner({
 migrations.run(process.argv[2])
 ```
 
-and
+Then run this file via node:
 ```sh
 node yourFile.js command
 ```
