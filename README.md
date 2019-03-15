@@ -18,6 +18,7 @@ This is the dummies and simplest package that allows you to automatically instal
  - integrate the code bellow into your project:
 
 ### mysql:
+
 ```javascript
 var mysql = require('mysql');
 let {CommandsRunner, MysqlDriver} = require('node-db-migration');
@@ -37,7 +38,6 @@ connection.connect(function(err) {
     });
     migrations.run(process.argv[2])
 });
-
 ```
 
 ### psql:
@@ -61,6 +61,7 @@ client.connect(function() {
 ```
 
 ### sqlite:
+
 ```javascript
 var sqlite3 = require('sqlite3').verbose();
 let {CommandsRunner, SQLite3Driver} = require('node-db-migration');
@@ -73,9 +74,7 @@ let migrations = new CommandsRunner({
     directoryWithScripts: __dirname + '/diff', // path of the directory with sql files
     dateFormat: 'YYYYMMDDHHmm', // sql file names date pattern, not required
 });
-migrations.run('resolve')
-
-
+migrations.run(process.argv[2])
 ```
 
 and
