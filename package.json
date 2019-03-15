@@ -1,9 +1,14 @@
 {
   "name": "node-db-migration",
-  "version": "1.1.2",
-  "description": "Database migration script for nodejs",
+  "version": "1.1.3",
+  "description": "Database migration script for nodejs for sqlite3, mysql, pg",
   "main": "index.js",
-  "files": ["index.js", "README.md", "LICENSE.txt", "package.json"],
+  "files": [
+    "index.js",
+    "README.md",
+    "LICENSE.txt",
+    "package.json"
+  ],
   "repository": {
     "type": "git",
     "url": "git+https://github.com/akoidan/node-db-migration.git"
@@ -19,6 +24,8 @@
   },
   "homepage": "https://github.com/akoidan/node-db-migration#readme",
   "dependencies": {
-    "moment": "*"
+    "moment": "*",
+    "mysql": "^2.16.0",
+    "sqlite3": "^4.0.6"
   }
 }
