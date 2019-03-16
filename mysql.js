@@ -13,5 +13,5 @@ connection.connect(function(err) {
         driver: new MysqlDriver(connection),
         directoryWithScripts: __dirname + '/diff',
     });
-    migrations.run('migrate')
+    migrations.run('resolve')
 });

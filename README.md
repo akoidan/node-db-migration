@@ -101,60 +101,26 @@ The default time format is YYYYMMDDHHmm. You can configure date format with `dat
 let {CommonDriver} = require('node-db-migration');
 
 class MyDriver extends CommonDriver {
+   isInitedSql() {
+        return `SHOW TABLES LIKE '${this.migrationTable}'`;
+    }
 
-       getDbMigrations() {
-           return `select * from ${this.migrationTable}`
-       }
-   
-       removeAllMigrations() {
-           return `update ${this.migrationTable} set error_if_happened = null where error_if_happened is not null`
-       }
-   
-       getFailedMigrations() {
-           return `select * from ${this.migrationTable} where error_if_happened is not null`
-       }
-   
-       markExecuted() {
-           return `insert into ${this.migrationTable} (name, created, error_if_happened) values (?, ?, ?)`
-       }
-   
-       createUniqueTableIndex() {
-           return `CREATE UNIQUE INDEX migrations_name_uindex ON ${this.migrationTable} (name)`;
-       }
-       
-       isInitedSql(cb) {
-           return `SELECT 1 FROM information_schema.tables WHERE table_name = '${this.migrationTable}'`;
-       }
-   
-       runSqlError(sql, params, cb) {
-           this.dbRunner.query(sql, params, function(error, result) {
-               return cb(error);
-           })
-       }
-   
-       readSql(sql, params, cb) {
-           this.runSql(sql, params, cb);
-       }
-   
-       runSql(sql, params, cb) {
-           this.dbRunner.query(sql, params, function(error, result) {
-               if (error) {
-                   throw JSON.stringify(error);
-               }
-               return cb(result.rows);
-           })
-       }
-   
-       createTableSql() {
-           return `CREATE TABLE ${this.migrationTable}
-   (
-       id bigserial PRIMARY KEY ,
-       name VARCHAR(128) NOT NULL,
-       run_on TIMESTAMP DEFAULT CURRENT_TIMESTAMP NOT NULL,
-       created TIMESTAMP DEFAULT CURRENT_TIMESTAMP NOT NULL,
-       error_if_happened text
-   )`;
-       }
+    createTableSql() {
+        return `CREATE TABLE ${this.migrationTable}` +
+            `(` +
+            `    id INT PRIMARY KEY AUTO_INCREMENT,` +
+            `    name VARCHAR(128) NOT NULL,` +
+            `    run_on TIMESTAMP DEFAULT CURRENT_TIMESTAMP NOT NULL,` +
+            `    created TIMESTAMP DEFAULT CURRENT_TIMESTAMP NOT NULL,` +
+            `    error_if_happened LONGTEXT` +
+            `)`;
+    }
+
+    query(sql, params, cb) {
+        this.dbRunner.query(sql, params, function(error, result) {
+            return cb(error /* should be simple string */, result /* should be array of rows */);
+        })
+    }
 }
 ```
 

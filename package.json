@@ -1,6 +1,6 @@
 {
   "name": "node-db-migration",
-  "version": "1.2.1",
+  "version": "1.2.2",
   "description": "Database migration script for nodejs for sqlite3, mysql, pg",
   "main": "index.js",
   "files": [
@@ -24,8 +24,11 @@
   },
   "homepage": "https://github.com/akoidan/node-db-migration#readme",
   "dependencies": {
-    "moment": "*",
-    "mysql": "^2.16.0",
-    "sqlite3": "^4.0.6"
+    "moment": "*"
+  },
+  "testDependencies": {
+    "mysql": "*",
+    "pg": "*",
+    "sqlite3": "*"
   }
 }

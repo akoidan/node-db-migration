@@ -2,7 +2,6 @@ const fs = require("fs");
 const path = require('path');
 const moment = require('moment');
 
-
 var colors = {
     Reset: "\x1b[0m",
     Bright: "\x1b[1m",
@@ -31,7 +30,6 @@ var colors = {
     BgWhite: "\x1b[47m"
 }
 
-
 class CommonDriver {
     constructor(dbRunner, migrationTable = 'migrations') {
         if (!dbRunner) {
@@ -44,6 +42,10 @@ class CommonDriver {
             console.error(`Renaming migration table name to lowercase ${colors.FgCyan}${migrationTable}${colors.Reset} -> ${colors.FgCyan}${tName}${colors.Reset}`);
         }
         this.migrationTable = tName;
+    }
+
+    getSeparator() {
+        return () => '?';
     }
 
     getDbMigrations() {
@@ -59,11 +61,28 @@ class CommonDriver {
     }
 
     markExecuted() {
-        return `insert into ${this.migrationTable} (name, created, error_if_happened) values (?, ?, ?)`
+        let separator = this.getSeparator();
+        return `insert into ${this.migrationTable} (name, created, error_if_happened) values (${separator()}, ${separator()}, ${separator()})`
     }
 
     createUniqueTableIndex() {
         return `CREATE UNIQUE INDEX migrations_name_uindex ON ${this.migrationTable} (name)`;
+    }
+
+    query(sql, params, cb) {
+        throw 'Unimplemented';
+    }
+
+    readQuery(sql, params, cb) {
+        this.query(sql, params, cb);
+    }
+
+    isInitedSql() {
+        throw 'Unimplemented';
+    }
+
+    createTableSql() {
+        throw 'Unimplemented';
     }
 
 }
@@ -74,38 +93,29 @@ class PsqlDriver extends CommonDriver {
         return `SELECT 1 FROM information_schema.tables WHERE table_name = '${this.migrationTable}'`;
     }
 
-    markExecuted() {
-        return `insert into ${this.migrationTable} (name, created, error_if_happened) values ($1, $2, $3)`
+    getSeparator() {
+        let i = 0;
+        return () => {
+            i++;
+            return `$${i}`;
+        };
     }
 
-    runSqlError(sql, params, cb) {
+    query(sql, params, cb) {
         this.dbRunner.query(sql, params, function(error, result) {
-            return cb(error);
-        })
-    }
-
-    readSql(sql, params, cb) {
-        this.runSql(sql, params, cb);
-    }
-
-    runSql(sql, params, cb) {
-        this.dbRunner.query(sql, params, function(error, result) {
-            if (error) {
-                throw JSON.stringify(error);
-            }
-            return cb(result.rows);
+            return cb(error && error.message ? error.message : error, result && result.rows);
         })
     }
 
     createTableSql() {
-        return `CREATE TABLE ${this.migrationTable}
-(
-    id bigserial PRIMARY KEY ,
-    name VARCHAR(128) NOT NULL,
-    run_on TIMESTAMP DEFAULT CURRENT_TIMESTAMP NOT NULL,
-    created TIMESTAMP DEFAULT CURRENT_TIMESTAMP NOT NULL,
-    error_if_happened text
-)`;
+        return `CREATE TABLE ${this.migrationTable}` +
+            `(` +
+            `    id bigserial PRIMARY KEY ,` +
+            `    name VARCHAR(128) NOT NULL,` +
+            `    run_on TIMESTAMP DEFAULT CURRENT_TIMESTAMP NOT NULL,` +
+            `    created TIMESTAMP DEFAULT CURRENT_TIMESTAMP NOT NULL,` +
+            `    error_if_happened text` +
+            `)`;
     }
 
 
@@ -117,42 +127,29 @@ class SQLite3Driver extends CommonDriver {
         return `SELECT name FROM sqlite_master WHERE type='table' AND name='${this.migrationTable}'`;
     }
 
-    readSql(sql, params, cb) {
+    query(sql, params, cb) {
+        this.dbRunner.run(sql, params, function(error, result) {
+            return cb(error && error.message ? error.message : error, result);
+        })
+    }
+
+    readQuery(sql, params, cb) {
         this.dbRunner.all(sql, params, function(error, result) {
-            if (error) {
-                throw error && error.message;
-            }
-            return cb(result || []);
+            return cb(error && error.message ? error.message : error, result);
         })
     }
 
 
     createTableSql() {
-        return `CREATE TABLE ${this.migrationTable}
-(
-    id INTEGER  NOT NULL PRIMARY KEY AUTOINCREMENT,
-    name VARCHAR(128) NOT NULL,
-    run_on DATETIME DEFAULT CURRENT_TIMESTAMP NOT NULL,
-    created DATETIME DEFAULT CURRENT_TIMESTAMP NOT NULL,
-    error_if_happened text
-) `;
+        return `CREATE TABLE ${this.migrationTable}` +
+            `(` +
+            `    id INTEGER  NOT NULL PRIMARY KEY AUTOINCREMENT ,` +
+            `    name VARCHAR(128) NOT NULL,` +
+            `    run_on DATETIME DEFAULT CURRENT_TIMESTAMP NOT NULL,` +
+            `    created DATETIME DEFAULT CURRENT_TIMESTAMP NOT NULL,` +
+            `    error_if_happened text` +
+            `)`;
     }
-
-    runSql(sql, params, cb) {
-        this.dbRunner.run(sql, params, function(error, result) {
-            if (error) {
-                throw error && error.message;
-            }
-            return cb(result || []);
-        })
-    }
-
-    runSqlError(sql, params, cb) {
-        this.dbRunner.run(sql, params, function(error, result) {
-            return cb(error && error.message);
-        })
-    }
-
 }
 
 class MysqlDriver extends CommonDriver {
@@ -161,34 +158,20 @@ class MysqlDriver extends CommonDriver {
         return `SHOW TABLES LIKE '${this.migrationTable}'`;
     }
 
-    readSql(sql, params, cb) {
-        this.runSql(sql, params, cb);
-    }
-
-
     createTableSql() {
-        return `CREATE TABLE ${this.migrationTable}
-(
-    id INT PRIMARY KEY AUTO_INCREMENT,
-    name VARCHAR(128) NOT NULL,
-    run_on TIMESTAMP DEFAULT CURRENT_TIMESTAMP NOT NULL,
-    created TIMESTAMP DEFAULT CURRENT_TIMESTAMP NOT NULL,
-    error_if_happened LONGTEXT
-) `;
+        return `CREATE TABLE ${this.migrationTable}` +
+            `(` +
+            `    id INT PRIMARY KEY AUTO_INCREMENT,` +
+            `    name VARCHAR(128) NOT NULL,` +
+            `    run_on TIMESTAMP DEFAULT CURRENT_TIMESTAMP NOT NULL,` +
+            `    created TIMESTAMP DEFAULT CURRENT_TIMESTAMP NOT NULL,` +
+            `    error_if_happened LONGTEXT` +
+            `)`;
     }
 
-    runSql(sql, params, cb) {
-        this.dbRunner.query(sql, params, function(error, result, fields) {
-            if (error) {
-                throw JSON.stringify(error);
-            }
-            return cb(result);
-        })
-    }
-
-    runSqlError(sql, params, cb) {
-        this.dbRunner.query(sql, params, function(error, result, fields) {
-            return cb(error);
+    query(sql, params, cb) {
+        this.dbRunner.query(sql, params, function(error, result) {
+            return cb(error && error.message ? error.message : error, result);
         })
     }
 
@@ -202,16 +185,34 @@ class Migrations {
         this.dateFormat = dateFormat;
     }
 
+    runSql(sql, params, cb) {
+        this.driver.query(sql, params, function(error, result) {
+            if (error) {
+                throw JSON.stringify(error);
+            }
+            return cb(result);
+        })
+    }
+
+    readSql(sql, params, cb) {
+        this.driver.readQuery(sql, params, function(error, result) {
+            if (error) {
+                throw JSON.stringify(error);
+            }
+            return cb(result);
+        });
+    }
+
     checkIfExists(callback) {
-        this.driver.readSql(this.driver.isInitedSql(), [], (rows) => {
+        this.readSql(this.driver.isInitedSql(), [], (rows) => {
             callback(rows.length > 0);
         });
     }
 
     doInit(callback) {
         console.log(`Creating migration table...`);
-        this.driver.runSql(this.driver.createTableSql(), [], () => {
-            this.driver.runSql(this.driver.createUniqueTableIndex(), [], () => {
+        this.runSql(this.driver.createTableSql(), [], () => {
+            this.runSql(this.driver.createUniqueTableIndex(), [], () => {
                 console.log(`${colors.FgGreen}DB has been successfully initialized${colors.Reset}`);
                 callback();
             });
@@ -250,8 +251,7 @@ class Migrations {
     runScript(fileName, created, next, failSilently = false) {
         this.getScriptStr(fileName, query => {
             console.log(`Executing ${colors.FgCyan}${fileName}${colors.Reset} ...`);
-            this.driver.runSqlError(query, [], (migrationErr) => {
-                migrationErr = migrationErr ? JSON.stringify(migrationErr) : null;
+            this.driver.query(query, [], (migrationErr, result) => {
                 this.markExecuted(fileName, created, migrationErr, () => {
                     if (migrationErr) {
                         if (failSilently) {
@@ -263,7 +263,7 @@ class Migrations {
                         next();
                     }
                 })
-            });
+            })
         })
     }
 
@@ -273,7 +273,7 @@ class Migrations {
         } else {
             console.log(`${colors.FgGreen}Migration ${colors.FgCyan}${fileName}${colors.FgGreen} succeeded${colors.Reset}`);
         }
-        this.driver.runSql(this.driver.markExecuted(), [fileName, created, migrationErr], callback);
+        this.runSql(this.driver.markExecuted(), [fileName, created, migrationErr], callback);
     }
 
     findNewMigrations(callback, failSilently = false) {
@@ -285,7 +285,7 @@ class Migrations {
     }
 
     getDbMigrations(callback) {
-        this.driver.readSql(this.driver.getDbMigrations(), [], callback);
+        this.readSql(this.driver.getDbMigrations(), [], callback);
     }
 
     getCompletedMigrations(callback, failSilently = false) {
@@ -326,7 +326,7 @@ class Migrations {
 
 
     getFailedMigrations(cb) {
-        this.driver.readSql(this.driver.getFailedMigrations(), [], (rows) => {
+        this.readSql(this.driver.getFailedMigrations(), [], (rows) => {
             if (rows.length === 0) {
                 console.log("No failed migrations found")
             } else {
@@ -344,10 +344,12 @@ class Migrations {
     resolveAllMigrations(callback) {
         this.getFailedMigrations(found => {
             if (found) {
-                this.driver.runSql(this.driver.removeAllMigrations(), [], (ok) => {
+                this.runSql(this.driver.removeAllMigrations(), [], (ok) => {
                     console.log(`${colors.FgGreen}${found} migration(s) marked as resolved${colors.Reset}`);
                     callback();
                 })
+            } else {
+                callback();
             }
         })
     }
