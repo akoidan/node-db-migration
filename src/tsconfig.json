@@ -1,0 +1,36 @@
+{
+  "compilerOptions": {
+    "lib": [
+      "dom",
+      "es5",
+      "es2015",
+      "es2015.promise"
+    ],
+    "types": [
+      "mocha",
+      "node"
+    ],
+    "typeRoots": [
+      "node_modules/@types"
+    ],
+    "outDir": "../lib",
+    "module": "commonjs",
+    "moduleResolution": "node",
+    "target": "commonjs",
+    "declaration": true,
+    "sourceMap": false,
+    "noImplicitAny": true,
+    "removeComments": false,
+    "strictNullChecks": false,
+    "emitDecoratorMetadata": true,
+    "experimentalDecorators": true,
+    "allowSyntheticDefaultImports": true
+  },
+  "include": [
+    "./*.ts"
+  ],
+  "exclude": [
+    "node_modules",
+    "lib"
+  ]
+}

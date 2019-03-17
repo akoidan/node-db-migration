@@ -1,4 +1,4 @@
-let {CommandsRunner, PsqlDriver} = require('./index');
+let {CommandsRunner, PsqlDriver} = require('./src');
 const { Client } = require('pg')
 
 const client = new Client({

@@ -4,15 +4,20 @@
   "description": "Database migration script for nodejs for sqlite3, mysql, pg",
   "main": "index.js",
   "files": [
-    "index.js",
+    "lib",
     "README.md",
     "LICENSE.txt",
     "package.json"
   ],
+  "scripts": {
+    "build": "rm ./lib -rf && tsc -p src/tsconfig.json",
+    "test": "mocha test/index.ts"
+  },
   "repository": {
     "type": "git",
     "url": "git+https://github.com/akoidan/node-db-migration.git"
   },
+  "typings": "./lib/index.d.ts",
   "keywords": [
     "db",
     "migration"
@@ -26,9 +31,19 @@
   "dependencies": {
     "moment": "*"
   },
-  "testDependencies": {
+  "devDependencies": {
+    "@types/chai": "^4.1.4",
+    "@types/chai-as-promised": "^7.1.0",
+    "@types/mocha": "^5.2.3",
+    "@types/mysql": "^2.15.5",
+    "@types/node": "^11.11.3",
+    "chai": "^4.2.0",
+    "chai-as-promised": "^7.1.1",
+    "mocha": "^5.2.0",
     "mysql": "*",
     "pg": "*",
-    "sqlite3": "*"
+    "sqlite3": "*",
+    "ts-node": "^8.0.3",
+    "typescript": "^3.3.3333"
   }
 }
