@@ -83,7 +83,7 @@ export interface Driver {
 
 
 
-export class CommonDriver implements Driver {
+export abstract class CommonDriver implements Driver {
 
     dbRunner: any;
     migrationTable: string;
@@ -126,21 +126,15 @@ export class CommonDriver implements Driver {
         return `CREATE UNIQUE INDEX migrations_name_uindex ON ${this.migrationTable} (name)`;
     }
 
-    async query(sql: string, params: any[]): Promise<QueryResult> {
-        throw 'Unimplemented';
-    }
-
     async readQuery(sql: string, params: any[]): Promise<QueryResult> {
         return await this.query(sql, params);
     }
 
-    isInitedSql(): string {
-        throw 'Unimplemented';
-    }
+    abstract async query(sql: string, params: any[]): Promise<QueryResult> ;
 
-    createTableSql(): string {
-        throw 'Unimplemented';
-    }
+    abstract isInitedSql(): string;
+
+    abstract createTableSql(): string;
 
 }
 
