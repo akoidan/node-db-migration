@@ -36,7 +36,7 @@ async function sqliteTest() {
     let db: Database;
     await Test('sqlite', async () => {
         db = new sqlite3.Database(':memory:');
-        let driver = new SQLite3Driver(db);
+        const driver = new SQLite3Driver(db);
         return {
             driver,
             nativeDriver: db

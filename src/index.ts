@@ -5,7 +5,7 @@ import {Client} from 'pg';
 import {Database} from 'sqlite3';
 import {Connection} from 'mysql';
 
-let colors = {
+const colors = {
     Reset: '\x1b[0m',
     Bright: '\x1b[1m',
     Dim: '\x1b[2m',
@@ -59,7 +59,11 @@ export interface Config {
 
 export interface QueryResult {
     error: string;
-    rows: any[];
+    rows: QueryRes[];
+}
+
+interface QueryRes {
+
 }
 
 export interface Driver {
@@ -93,7 +97,7 @@ export abstract class CommonDriver<T> implements Driver {
 
     constructor(dbRunner: T, migrationTable: string = 'migrations') {
         if (!dbRunner) {
-            throw `dbRunner can't be null`;
+            throw Error(`dbRunner can't be null`);
         }
         this.dbRunner = dbRunner;
         let tName = migrationTable.toLocaleLowerCase();
@@ -283,7 +287,7 @@ export class Migrations {
         console.log(`runSql ${sql} :${params.join(',')}`);
         let result: QueryResult = await this.driver.query(sql, params);
         if (result.error) {
-            throw JSON.stringify(result.error);
+            throw Error(result.error);
         }
         return result.rows;
     }
@@ -292,7 +296,7 @@ export class Migrations {
         console.log(`readSql ${sql} :${params.join(',')}`);
         let result: QueryResult = await this.driver.readQuery(sql, params);
         if (result.error) {
-            throw JSON.stringify(result.error);
+            throw Error(result.error);
         }
         return result.rows;
     }
@@ -353,11 +357,11 @@ export class Migrations {
         let result: QueryResult = await this.driver.executeMultipleStatements(query);
         await this.markExecuted(fileName, created, result.error);
         if (result.error && !failSilently) {
-            throw result.error;
+            throw Error(result.error);
         }
     }
 
-    async markExecuted(fileName: string, created: Date, migrationErr: string): Promise<void> {
+    async markExecuted(fileName: string, created: Date, migrationErr: string | null): Promise<void> {
         if (migrationErr) {
             console.error(`Migration ${colors.FgCyan}${fileName}${colors.Reset} failed with error ${colors.FgRed}${migrationErr}${colors.Reset}`);
         } else {
@@ -380,7 +384,7 @@ export class Migrations {
         if (!failSilently) {
             res.forEach(r => {
                 if (r.error_if_happened) {
-                    throw `Can't start migrations while having a failed one. Run 'resolve' first. Error details: \n${JSON.stringify(r)}`;
+                    throw Error(`Can't start migrations while having a failed one. Run 'resolve' first. Error details: \n${JSON.stringify(r)}`);
                 }
             });
         }
@@ -489,12 +493,12 @@ export class CommandsRunner extends Migrations {
             if (!inited && command !== 'init') {
                 await this.doInit();
             } else if (inited && command === 'init') {
-                throw 'DB is already initialized';
+                throw Error('DB is already initialized');
             }
             await this.commands[command].run();
         } else {
             this.printHelp();
-            throw `Invalid command ${command}`;
+            throw Error(`Invalid command ${command}`);
         }
     }
 

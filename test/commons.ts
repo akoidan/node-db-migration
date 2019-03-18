@@ -1,14 +1,15 @@
 import {CommandsRunner, Driver} from '../src';
 import {assert, expect, use} from 'chai';
+import {AsyncFunc} from 'mocha';
 import * as  path from 'path';
 import * as chaiAsPromised from 'chai-as-promised';
 
 
 use(chaiAsPromised);
 
-export default async function (testName: string, driverFactory: () => Promise<{ driver: Driver, nativeDriver: any }>, sqlRunner: (driver: any, sql: string, params: any[]) => Promise<any[]>, beforeEachFn, afterEachFn, afterFn, getSeparator: () => () => string, isInitedSql: string) {
+export default async function (testName: string, driverFactory: () => Promise<{ driver: Driver, nativeDriver: any }>, sqlRunner: (driver: any, sql: string, params: any[]) => Promise<any[]>, beforeEachFn: AsyncFunc, afterEachFn: AsyncFunc, afterFn: AsyncFunc, getSeparator: () => () => string, isInitedSql: string) {
     describe(testName, async () => {
-        beforeEach(beforeEachFn);
+        beforeEach('b', beforeEachFn);
         after(afterFn);
         afterEach(afterEachFn);
         it('init should work', async function () {

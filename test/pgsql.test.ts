@@ -1,6 +1,6 @@
 'use strict';
 
-import {Client} from 'pg';
+import {Client, ClientBase} from 'pg';
 import Test from './commons';
 import {PsqlDriver} from '../src';
 import {assert, expect, use} from 'chai';
@@ -63,7 +63,7 @@ async function pgSqlTest() {
     let createDb = recreateDb(dbCreator);
     await createDb();
 
-    let currentConnection;
+    let currentConnection: Client;
     await Test('pgsql', async () => {
         const migrationRunner: Client = new Client({
             connectionString: `postgresql://postgres:@localhost:5432/${DB_NAME}`,

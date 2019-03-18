@@ -8,7 +8,7 @@ import {MysqlDriver} from '../src';
 
 export async function runSql(driver: any, sql: string, params: any[] = []): Promise<any[]> {
     return new Promise((resolve, reject) => {
-        driver.query(sql, params, (err, res) => {
+        driver.query(sql, params, (err: any, res: any[]) => {
             if (err) {
                 reject(err);
             } else {
@@ -20,7 +20,7 @@ export async function runSql(driver: any, sql: string, params: any[] = []): Prom
 
 export const DB_NAME = 'node_db_migration_test';
 
-export async function closeConnection(driver) {
+export async function closeConnection(driver: Connection) {
     return new Promise((resolve, reject) => {
         driver.end((err) => {
             if (err) {
@@ -32,9 +32,9 @@ export async function closeConnection(driver) {
     });
 }
 
-export  async function connectDriver(driver) {
+export  async function connectDriver(driver: Connection) {
     await new Promise((resolve, reject) => {
-        driver.connect(function (err) {
+        driver.connect( (err: any)  => {
             if (err) {
                 reject(err);
             } else {
@@ -44,7 +44,7 @@ export  async function connectDriver(driver) {
     });
 }
 
-export function recreateDb(driver) {
+export function recreateDb(driver: Connection) {
     return async () => {
         await runSql(driver, `drop database if exists ${DB_NAME}`, []);
         await runSql(driver, `create database ${DB_NAME}`, []);
