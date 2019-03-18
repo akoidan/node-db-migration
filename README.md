@@ -1,4 +1,4 @@
-# node-db-migration [![GitHub license](https://img.shields.io/badge/license-MIT-blue.svg)](https://github.com/akoidan/node-db-migration/blob/master/LICENSE) [![npm version](https://img.shields.io/npm/v/node-db-migration.svg)](https://www.npmjs.com/package/node-db-migration)
+# node-db-migration [![GitHub license](https://img.shields.io/badge/license-MIT-blue.svg)](https://github.com/akoidan/node-db-migration/blob/master/LICENSE) [![npm version](https://img.shields.io/npm/v/node-db-migration.svg)](https://www.npmjs.com/package/node-db-migration)[![Build Status](https://travis-ci.org/akoidan/node-db-migration.svg?branch=master)](https://travis-ci.org/akoidan/node-db-migration)
 
 Source control for your database. This is the dummies and simplest package that allows you to automatically install new migrations on your database. Just write your migration scripts in bare sql and this script will do the rest of magic for you!
 
