@@ -11,8 +11,10 @@
   ],
   "scripts": {
     "build": "rm ./lib -rf && tsc -p src/tsconfig.json",
-    "test": "nyc mocha",
-    "report": "nyc report --reporter=text-lcov > coverage.lcov"
+    "test": "mocha",
+    "report": "nyc mocha",
+    "lcov": "nyc report --reporter=text-lcov > coverage.lcov",
+    "codecov": "codecov"
   },
   "repository": {
     "type": "git",

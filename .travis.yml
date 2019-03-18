@@ -4,9 +4,7 @@ node_js:
 services:
   - mysql
   - postgresql
-install:
-  - npm install -g codecov
 script:
-  - nyc mocha
-  - nyc report --reporter=text-lcov > coverage.lcov
-  - codecov
+  - npm run report
+  - npm run lcov
+  - npm run codecov
