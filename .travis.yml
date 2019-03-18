@@ -4,3 +4,8 @@ node_js:
 services:
   - mysql
   - postgresql
+install:
+  - npm install -g codecov
+script:
+  - test
+  - codecov

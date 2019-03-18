@@ -77,7 +77,6 @@ async function pgSqlTest() {
     }, runSql, createDb, async () => {
         await closeConnection(currentConnection);
     }, async () => {
-        console.log('asd');
         await runSql(dbCreator, `drop database ${DB_NAME}`, []);
         await closeConnection(dbCreator);
     }, () => {

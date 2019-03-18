@@ -1,3 +1,4 @@
 --require ts-node/register
 --ui bdd
 --delay
+test/*.test.ts
