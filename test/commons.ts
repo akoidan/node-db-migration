@@ -144,7 +144,7 @@ export default async function (testName: string, driverFactory: () => Promise<{ 
             sepFn = getSeparator();
             await sqlRunner(nativeDriver, `insert into migrations (name, run_on, created, error_if_happened) values (${sepFn()}, ${sepFn()}, ${sepFn()}, ${sepFn()})`, ['3-insert.sql', new Date(), new Date(1), 'error']);
             let count = await commandsRunner.getFailedMigrations();
-            expect(count).to.be.equal(1);
+            expect(count).to.be.equal(2);
         });
     });
 }
