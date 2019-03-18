@@ -7,5 +7,4 @@ services:
 install:
   - npm install -g codecov
 script:
-  - test
   - codecov
