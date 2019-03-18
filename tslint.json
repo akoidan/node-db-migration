@@ -1,3 +1,6 @@
 {
-  "extends": "gts/tslint.json"
+  "extends": [
+    "tslint-no-unused-expression-chai",
+    "gts/tslint.json"
+  ]
 }

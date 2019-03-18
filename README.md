@@ -126,4 +126,24 @@ class MyDriver extends CommonDriver {
 }
 ```
 
+Using async code:
+
+```
+javascript
+
+import * as sqlite3 from 'sqlite3';
+import {CommandsRunner, SQLite3Driver} from 'node-db-migration';
+
+async function run() {
+    const db = new sqlite3.Database(':memory:');
+    const migrations = new CommandsRunner({
+        driver: new SQLite3Driver(db),
+        directoryWithScripts: __dirname + '/diff',
+    });
+    await migrations.run('migrate')
+    console.log("this will print after migrations are finished");
+}
+run();
+```
+
 

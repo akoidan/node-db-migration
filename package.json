@@ -18,8 +18,6 @@
     "clean": "gts clean",
     "compile": "rm ./lib -rf && tsc -p src/tsconfig.json",
     "fix": "gts fix",
-    "prepare": "npm run compile",
-    "pretest": "npm run compile",
     "posttest": "npm run check"
   },
   "repository": {
@@ -51,6 +49,8 @@
     "chai": "^4.2.0",
     "chai-as-promised": "^7.1.1",
     "codecov": "^3.2.0",
+    "gts": "^0.9.0",
+    "tslint-no-unused-expression-chai": "^0.1.4",
     "istanbul": "^0.4.5",
     "mocha": "^5.2.0",
     "mysql": "*",
@@ -59,8 +59,7 @@
     "sqlite3": "*",
     "ts-node": "^8.0.3",
     "tslint": "^5.14.0",
-    "typescript": "^3.3.3333",
-    "gts": "^0.9.0"
+    "typescript": "^3.3.3333"
   },
   "nyc": {
     "extension": [
