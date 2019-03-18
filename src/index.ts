@@ -1,35 +1,37 @@
-import * as fs from "fs";
-import * as path from "path";
-import * as moment from "moment";
+import * as fs from 'fs';
+import * as path from 'path';
+import * as moment from 'moment';
+import {Client} from 'pg';
+import {Database} from 'sqlite3';
+import {Connection} from 'mysql';
 
+let colors = {
+    Reset: '\x1b[0m',
+    Bright: '\x1b[1m',
+    Dim: '\x1b[2m',
+    Underscore: '\x1b[4m',
+    Blink: '\x1b[5m',
+    Reverse: '\x1b[7m',
+    Hidden: '\x1b[8m',
 
-var colors = {
-    Reset: "\x1b[0m",
-    Bright: "\x1b[1m",
-    Dim: "\x1b[2m",
-    Underscore: "\x1b[4m",
-    Blink: "\x1b[5m",
-    Reverse: "\x1b[7m",
-    Hidden: "\x1b[8m",
+    FgBlack: '\x1b[30m',
+    FgRed: '\x1b[31m',
+    FgGreen: '\x1b[32m',
+    FgYellow: '\x1b[33m',
+    FgBlue: '\x1b[34m',
+    FgMagenta: '\x1b[35m',
+    FgCyan: '\x1b[36m',
+    FgWhite: '\x1b[37m',
 
-    FgBlack: "\x1b[30m",
-    FgRed: "\x1b[31m",
-    FgGreen: "\x1b[32m",
-    FgYellow: "\x1b[33m",
-    FgBlue: "\x1b[34m",
-    FgMagenta: "\x1b[35m",
-    FgCyan: "\x1b[36m",
-    FgWhite: "\x1b[37m",
-
-    BgBlack: "\x1b[40m",
-    BgRed: "\x1b[41m",
-    BgGreen: "\x1b[42m",
-    BgYellow: "\x1b[43m",
-    BgBlue: "\x1b[44m",
-    BgMagenta: "\x1b[45m",
-    BgCyan: "\x1b[46m",
-    BgWhite: "\x1b[47m"
-}
+    BgBlack: '\x1b[40m',
+    BgRed: '\x1b[41m',
+    BgGreen: '\x1b[42m',
+    BgYellow: '\x1b[43m',
+    BgBlue: '\x1b[44m',
+    BgMagenta: '\x1b[45m',
+    BgCyan: '\x1b[46m',
+    BgWhite: '\x1b[47m'
+};
 
 export interface Migration {
     id: number;
@@ -45,13 +47,13 @@ export interface CommandDescription {
 }
 
 export interface NameCreated {
-    name: string,
+    name: string;
     created: Date;
 }
 
 export interface Config {
-    directoryWithScripts: string,
-    dateFormat?: string,
+    directoryWithScripts: string;
+    dateFormat?: string;
     driver: Driver;
 }
 
@@ -79,23 +81,24 @@ export interface Driver {
     isInitedSql(): string;
 
     createTableSql(): string;
+
+    executeMultipleStatements(sql: string): Promise<QueryResult>;
 }
 
 
+export abstract class CommonDriver<T> implements Driver {
 
-export abstract class CommonDriver implements Driver {
-
-    dbRunner: any;
+    dbRunner: T;
     migrationTable: string;
 
-    constructor(dbRunner: any, migrationTable: string = 'migrations') {
+    constructor(dbRunner: T, migrationTable: string = 'migrations') {
         if (!dbRunner) {
             throw `dbRunner can't be null`;
         }
         this.dbRunner = dbRunner;
         let tName = migrationTable.toLocaleLowerCase();
         if (tName !== migrationTable) {
-            //prevent bugs like in pgsql
+            // prevent bugs like in pgsql
             console.error(`Renaming migration table name to lowercase ${colors.FgCyan}${migrationTable}${colors.Reset} -> ${colors.FgCyan}${tName}${colors.Reset}`);
         }
         this.migrationTable = tName;
@@ -106,20 +109,20 @@ export abstract class CommonDriver implements Driver {
     }
 
     getDbMigrations(): string {
-        return `select * from ${this.migrationTable}`
+        return `select * from ${this.migrationTable}`;
     }
 
     removeAllMigrations(): string {
-        return `update ${this.migrationTable} set error_if_happened = null where error_if_happened is not null`
+        return `update ${this.migrationTable} set error_if_happened = null where error_if_happened is not null`;
     }
 
     getFailedMigrations(): string {
-        return `select * from ${this.migrationTable} where error_if_happened is not null`
+        return `select * from ${this.migrationTable} where error_if_happened is not null`;
     }
 
     markExecuted(): string {
         let separator = this.getSeparator();
-        return `insert into ${this.migrationTable} (name, created, error_if_happened) values (${separator()}, ${separator()}, ${separator()})`
+        return `insert into ${this.migrationTable} (name, created, error_if_happened) values (${separator()}, ${separator()}, ${separator()})`;
     }
 
     createUniqueTableIndex(): string {
@@ -130,6 +133,10 @@ export abstract class CommonDriver implements Driver {
         return await this.query(sql, params);
     }
 
+    async executeMultipleStatements(sql: string): Promise<QueryResult> {
+        return await this.query(sql, []);
+    }
+
     abstract async query(sql: string, params: any[]): Promise<QueryResult> ;
 
     abstract isInitedSql(): string;
@@ -138,7 +145,7 @@ export abstract class CommonDriver implements Driver {
 
 }
 
-export class PsqlDriver extends CommonDriver {
+export class PsqlDriver extends CommonDriver<Client> {
 
     isInitedSql(): string {
         return `SELECT 1 FROM information_schema.tables WHERE table_name = '${this.migrationTable}'`;
@@ -153,14 +160,14 @@ export class PsqlDriver extends CommonDriver {
     }
 
     async query(sql: string, params: any[]): Promise<QueryResult> {
-        return new Promise((resolve, reject) => {
+        return new Promise((resolve) => {
             this.dbRunner.query(sql, params, (error: any, result: any) => {
                 resolve({
                     error: error && error.message ? error.message : error,
                     rows: result && result.rows
-                })
-            })
-        })
+                });
+            });
+        });
     }
 
     createTableSql(): string {
@@ -177,32 +184,43 @@ export class PsqlDriver extends CommonDriver {
 
 }
 
-export class SQLite3Driver extends CommonDriver {
+export class SQLite3Driver extends CommonDriver<Database> {
 
     isInitedSql(): string {
         return `SELECT name FROM sqlite_master WHERE type='table' AND name='${this.migrationTable}'`;
     }
 
     async query(sql: string, params: any[]): Promise<QueryResult> {
-        return new Promise((resolve, reject) => {
+        return new Promise((resolve) => {
             this.dbRunner.run(sql, params, (error: any, result: any) => {
                 resolve({
                     error: error && error.message ? error.message : error,
                     rows: result
-                })
-            })
-        })
+                });
+            });
+        });
+    }
+
+    async executeMultipleStatements(sql: string): Promise<QueryResult> {
+        return new Promise((resolve) => {
+            this.dbRunner.exec(sql, (error: any) => {
+                resolve({
+                    error: error && error.message ? error.message : error,
+                    rows: []
+                });
+            });
+        });
     }
 
     async readQuery(sql: string, params: any[]): Promise<QueryResult> {
-        return new Promise((resolve, reject) => {
+        return new Promise((resolve) => {
             this.dbRunner.all(sql, params, (error: any, result: any) => {
                 resolve({
                     error: error && error.message ? error.message : error,
                     rows: result
-                })
-            })
-        })
+                });
+            });
+        });
     }
 
 
@@ -218,7 +236,7 @@ export class SQLite3Driver extends CommonDriver {
     }
 }
 
-export class MysqlDriver extends CommonDriver {
+export class MysqlDriver extends CommonDriver<Connection> {
 
     isInitedSql(): string {
         return `SHOW TABLES LIKE '${this.migrationTable}'`;
@@ -236,14 +254,14 @@ export class MysqlDriver extends CommonDriver {
     }
 
     async query(sql: string, params: any[]): Promise<QueryResult> {
-        return new Promise((resolve, reject) => {
+        return new Promise((resolve) => {
             this.dbRunner.query(sql, params, (error: any, result: any) => {
                 resolve({
                     error: error && error.message ? error.message : error,
                     rows: result
-                })
-            })
-        })
+                });
+            });
+        });
     }
 
 }
@@ -262,7 +280,7 @@ export class Migrations {
     }
 
     async runSql(sql: string, params: any[]): Promise<any[]> {
-        console.log(`runSql ${sql} :${params.join(',')}`)
+        console.log(`runSql ${sql} :${params.join(',')}`);
         let result: QueryResult = await this.driver.query(sql, params);
         if (result.error) {
             throw JSON.stringify(result.error);
@@ -271,7 +289,7 @@ export class Migrations {
     }
 
     async readSql(sql: string, params: any[]): Promise<any[]> {
-        console.log(`readSql ${sql} :${params.join(',')}`)
+        console.log(`readSql ${sql} :${params.join(',')}`);
         let result: QueryResult = await this.driver.readQuery(sql, params);
         if (result.error) {
             throw JSON.stringify(result.error);
@@ -280,7 +298,7 @@ export class Migrations {
     }
 
     async checkIfExists(): Promise<boolean> {
-        console.log("Checking if migration table exists");
+        console.log('Checking if migration table exists');
         let result: any[] = await this.readSql(this.driver.isInitedSql(), []);
         let isExists = result.length > 0;
         console.log(isExists ? 'Migration table exists' : `Migration table doesn't exist`);
@@ -299,7 +317,7 @@ export class Migrations {
         return new Promise((resolve, reject) => {
             fs.readFile(filePath, {encoding: 'utf-8'}, (err, data) => {
                 if (err) {
-                    reject(JSON.stringify(err))
+                    reject(JSON.stringify(err));
                 } else {
                     resolve(data);
                 }
@@ -314,7 +332,7 @@ export class Migrations {
                     reject(err.message);
                 } else {
                     if (exclude) {
-                        files = files.filter(e => exclude.findIndex(f => f.name == e) < 0);
+                        files = files.filter(e => exclude.findIndex(f => f.name === e) < 0);
                     }
                     let result: NameCreated[] = [];
 
@@ -332,7 +350,7 @@ export class Migrations {
     async runScript(fileName: string, created: Date, failSilently = false) {
         let query: string = await this.getScriptStr(fileName);
         console.log(`Executing ${colors.FgCyan}${fileName}${colors.Reset} ...`);
-        let result: QueryResult = await this.driver.query(query, []);
+        let result: QueryResult = await this.driver.executeMultipleStatements(query);
         await this.markExecuted(fileName, created, result.error);
         if (result.error && !failSilently) {
             throw result.error;
@@ -362,7 +380,7 @@ export class Migrations {
         if (!failSilently) {
             res.forEach(r => {
                 if (r.error_if_happened) {
-                    throw `Can't start migrations while having a failed one. Run "resolve" first. Error details: \n${JSON.stringify(r)}`
+                    throw `Can't start migrations while having a failed one. Run 'resolve' first. Error details: \n${JSON.stringify(r)}`;
                 }
             });
         }
@@ -381,19 +399,19 @@ export class Migrations {
         for (let i = 0; i < allScript.length; i++) {
             await this.markExecuted(allScript[i].name, allScript[i].created, null);
         }
-        console.log("All scripts has been marked as executed");
+        console.log('All scripts has been marked as executed');
     }
 
 
     async getFailedMigrations(): Promise<number> {
         let rows: any[] = await this.readSql(this.driver.getFailedMigrations(), []);
         if (rows.length === 0) {
-            console.log("No failed migrations found")
+            console.log('No failed migrations found');
         } else {
             console.log(`Found ${rows.length} failed migrations, they will be flagged as resolved:`);
-            let result = "";
+            let result = '';
             rows.forEach(e => {
-                result += ` - ${e.name}:\n   Error: ${e.error_if_happened}\n   Ran on: ${e.run_on}\n`
+                result += ` - ${e.name}:\n   Error: ${e.error_if_happened}\n   Ran on: ${e.run_on}\n`;
             });
             console.log(result);
         }
@@ -417,7 +435,7 @@ export class CommandsRunner extends Migrations {
         super(config);
         this.commands = {
             init: {
-                description: "Initialized database for migrations",
+                description: 'Initialized database for migrations',
                 run: async () => {
                     await this.doInit();
                     console.log(`${colors.FgGreen}DB has been successfully initialized${colors.Reset}`);
@@ -444,7 +462,7 @@ export class CommandsRunner extends Migrations {
             forceMigrate: {
                 description: `Installs all new updates from ${this.directoryWithScripts}. If one migration fails it goes to another one.`,
                 run: async () => {
-                    await this.forceRunMigrations()
+                    await this.forceRunMigrations();
                 }
             },
             resolve: {
@@ -470,8 +488,8 @@ export class CommandsRunner extends Migrations {
             let inited: boolean = await this.checkIfExists();
             if (!inited && command !== 'init') {
                 await this.doInit();
-            } else if (inited && command == 'init') {
-                throw "DB is already initialized";
+            } else if (inited && command === 'init') {
+                throw 'DB is already initialized';
             }
             await this.commands[command].run();
         } else {
@@ -483,7 +501,7 @@ export class CommandsRunner extends Migrations {
     printHelp(): void {
         let des = '';
         Object.keys(this.commands).forEach(key => {
-            des += `${colors.FgCyan}${key}${colors.Reset}: ${this.commands[key].description}\n`
+            des += `${colors.FgCyan}${key}${colors.Reset}: ${this.commands[key].description}\n`;
         });
         console.log(`Available commands are: \n${des}`);
     }
@@ -494,7 +512,7 @@ export class CommandsRunner extends Migrations {
             console.log(`Migrations to run:\n  - ${newMigrations.map(e => e.name).join('\n  - ')}`);
             await this.runMigrations(newMigrations, failSilently);
         } else {
-            console.log("No new migrations are available");
+            console.log('No new migrations are available');
         }
     }
 
@@ -512,7 +530,7 @@ export class CommandsRunner extends Migrations {
         if (migrations.length > 0) {
             console.log(`New migrations found: \n  - ${migrations.map(e => e.name).join('\n  - ')}`);
         } else {
-            console.log("No new migrations are available");
+            console.log('No new migrations are available');
         }
     }
 
