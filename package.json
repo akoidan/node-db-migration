@@ -11,8 +11,8 @@
   ],
   "scripts": {
     "build": "rm ./lib -rf && tsc -p src/tsconfig.json",
-    "cover": "istanbul cover _mocha 'test/*.test.ts'",
-    "test": "nyc mocha"
+    "test": "nyc mocha",
+    "report": "nyc report --reporter=text-lcov > coverage.lcov"
   },
   "repository": {
     "type": "git",
