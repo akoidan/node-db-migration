@@ -1,8 +1,8 @@
 {
   "name": "node-db-migration",
-  "version": "1.2.3",
+  "version": "1.2.4",
   "description": "Database migration script for nodejs for sqlite3, mysql, pg",
-  "main": "index.js",
+  "main": "lib/index.js",
   "files": [
     "lib",
     "README.md",
