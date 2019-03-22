@@ -70,14 +70,13 @@ async function pgSqlTest() {
         });
         await connectDriver(migrationRunner);
         currentConnection = migrationRunner;
-        return {
-          driver: new PsqlDriver(migrationRunner),
-          nativeDriver: migrationRunner
-        };
+        return migrationRunner;
       },
       runSql, createDb,
-      async () => {
-        await closeConnection(currentConnection);
+      async function test() {
+        if (!(this.currentTest && this.currentTest.skipCloseConnection)) {
+          await closeConnection(currentConnection);
+        }
       },
       async () => {
         await runSql(dbCreator, `drop database ${DB_NAME}`, []);
@@ -90,7 +89,8 @@ async function pgSqlTest() {
           return `$${i}`;
         };
       },
-      `SELECT 1 FROM information_schema.tables WHERE table_name = 'migrations'`);
+      `SELECT 1 FROM information_schema.tables WHERE table_name = 'migrations'`,
+      PsqlDriver);
   run();
 }
 

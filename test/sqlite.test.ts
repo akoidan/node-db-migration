@@ -7,7 +7,6 @@ import {describeTest} from './commons';
 import {SQLite3Driver} from '../src';
 import {SqlRunner} from './types';
 
-
 export const runSql: SqlRunner<Database> =
     <T>(driver: Database, sql: string, params: unknown[]): Promise<T[]> => {
       return new Promise((resolve, reject) => {
@@ -40,15 +39,17 @@ async function sqliteTest() {
       'sqlite',
       async () => {
         db = new sqlite3.Database(':memory:');
-        const driver = new SQLite3Driver(db);
-        return {driver, nativeDriver: db};
+        return db;
       },
       runSql, () => Promise.resolve(),
-      async () => {
-        await closeConnection(db);
+      async function afterEach() {
+        if (!(this.currentTest && this.currentTest.skipCloseConnection)) {
+          await closeConnection(db);
+        }
       },
       () => Promise.resolve(), () => () => '?',
-      `SELECT name FROM sqlite_master WHERE type='table' AND name='migrations'`);
+      `SELECT name FROM sqlite_master WHERE type='table' AND name='migrations'`,
+      SQLite3Driver);
   run();
 }
 

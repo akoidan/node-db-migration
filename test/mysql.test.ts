@@ -73,13 +73,12 @@ async function mySqlTest() {
 
   const driver = new MysqlDriver(migrationRunner);
   await describeTest(
-      'mysql',
-      async () => Promise.resolve({driver, nativeDriver: migrationRunner}),
-      runSql, createDb, () => Promise.resolve(), async function afterFn() {
+      'mysql', async () => Promise.resolve(migrationRunner), runSql, createDb,
+      () => Promise.resolve(), async function afterFn() {
         await runSql(dbCreator, `drop database ${DB_NAME}`, []);
         await Promise.all(
             [closeConnection(dbCreator), closeConnection(migrationRunner)]);
-      }, () => () => '?', `show tables like 'migrations'`);
+      }, () => () => '?', `show tables like 'migrations'`, MysqlDriver);
   run();
 }
 

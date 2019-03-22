@@ -3,28 +3,32 @@ import * as chaiAsPromised from 'chai-as-promised';
 import {AsyncFunc} from 'mocha';
 import * as path from 'path';
 
-import {CommandsRunner, Migration} from '../src';
+import {CommandsRunner, CommonDriver, Driver, Migration} from '../src';
 
-import {DriverRunner, SqlRunner} from './types';
+import {DriverCreator, SkipAfterEach, SqlRunner} from './types';
+import Context = Mocha.Context;
 
 use(chaiAsPromised);
+
 
 /* tslint:disable:no-unused-expression */
 
 export async function describeTest<T>(
-    testName: string, driverFactory: DriverRunner<T>, sqlRunner: SqlRunner<T>,
+    testName: string, driverFactory: () => Promise<T>, sqlRunner: SqlRunner<T>,
     beforeEachFn: AsyncFunc, afterEachFn: AsyncFunc, afterFn: AsyncFunc,
-    getSeparator: () => () => string, isInitedSql: string) {
+    getSeparator: () => () => string, isInitedSql: string,
+    driverClass: DriverCreator<T>) {
   function getMigrations(nativeDriver: T): Promise<Migration[]> {
     return sqlRunner<Migration>(nativeDriver, 'select * from migrations', []);
   }
 
-  describe(testName, async () => {
+  describe(testName, async function asdfsadf() {
     beforeEach('b', beforeEachFn);
     after(afterFn);
     afterEach(afterEachFn);
     it('init should work', async () => {
-      const {driver, nativeDriver} = await driverFactory();
+      const nativeDriver: T = await driverFactory();
+      const driver: CommonDriver<T> = new driverClass(nativeDriver);
       const commandsRunner: CommandsRunner = new CommandsRunner({
         driver,
         directoryWithScripts: path.join(__dirname, 'sql', 'list'),
@@ -34,7 +38,8 @@ export async function describeTest<T>(
       expect(tableNames, 'Migration table should exist').to.have.length(1);
     });
     it('init should fail if already inited', async () => {
-      const {driver} = await driverFactory();
+      const nativeDriver: T = await driverFactory();
+      const driver: CommonDriver<T> = new driverClass(nativeDriver);
       const commandsRunner: CommandsRunner = new CommandsRunner({
         driver,
         directoryWithScripts: path.join(__dirname, 'sql', 'list'),
@@ -44,7 +49,8 @@ export async function describeTest<T>(
           commandsRunner.run('init'), 'DB is already initialized');
     });
     it('fake should work', async () => {
-      const {driver, nativeDriver} = await driverFactory();
+      const nativeDriver: T = await driverFactory();
+      const driver: CommonDriver<T> = new driverClass(nativeDriver);
       const commandsRunner: CommandsRunner = new CommandsRunner({
         driver,
         directoryWithScripts: path.join(__dirname, 'sql', 'fake'),
@@ -64,7 +70,8 @@ export async function describeTest<T>(
     });
     it('find new migrations should return all migration when db is empty',
        async () => {
-         const {driver} = await driverFactory();
+         const nativeDriver: T = await driverFactory();
+         const driver: CommonDriver<T> = new driverClass(nativeDriver);
          const commandsRunner: CommandsRunner = new CommandsRunner({
            driver,
            directoryWithScripts: path.join(__dirname, 'sql', 'list'),
@@ -77,7 +84,8 @@ export async function describeTest<T>(
              .to.be.equal('2-insert.sql');
        });
     it('Should print only 2nd migration when 1st is exected', async () => {
-      const {driver, nativeDriver} = await driverFactory();
+      const nativeDriver: T = await driverFactory();
+      const driver: CommonDriver<T> = new driverClass(nativeDriver);
       const commandsRunner: CommandsRunner = new CommandsRunner({
         driver,
         directoryWithScripts: path.join(__dirname, 'sql', 'list'),
@@ -96,7 +104,8 @@ export async function describeTest<T>(
           .to.be.equal('2-insert.sql');
     });
     it('Migration with error should save it', async () => {
-      const {driver, nativeDriver} = await driverFactory();
+      const nativeDriver: T = await driverFactory();
+      const driver: CommonDriver<T> = new driverClass(nativeDriver);
       const commandsRunner: CommandsRunner = new CommandsRunner({
         driver,
         directoryWithScripts: path.join(__dirname, 'sql', 'migrate-fail'),
@@ -110,7 +119,8 @@ export async function describeTest<T>(
           .to.not.be.null;
     });
     it('Should run one and fail another', async () => {
-      const {driver, nativeDriver} = await driverFactory();
+      const nativeDriver: T = await driverFactory();
+      const driver: CommonDriver<T> = new driverClass(nativeDriver);
       const commandsRunner: CommandsRunner = new CommandsRunner({
         driver,
         directoryWithScripts:
@@ -131,7 +141,8 @@ export async function describeTest<T>(
       expect(pets, 'Pets should be empty').to.not.be.empty;
     });
     it('Should execute forсe migration', async () => {
-      const {driver, nativeDriver} = await driverFactory();
+      const nativeDriver: T = await driverFactory();
+      const driver: CommonDriver<T> = new driverClass(nativeDriver);
       const commandsRunner: CommandsRunner = new CommandsRunner({
         driver,
         directoryWithScripts: path.join(__dirname, 'sql', 'force-migrate'),
@@ -155,7 +166,8 @@ export async function describeTest<T>(
       expect(pets, 'should be 2 pets').to.have.length(2);
     });
     it('Should resolve failed migrations', async () => {
-      const {driver, nativeDriver} = await driverFactory();
+      const nativeDriver: T = await driverFactory();
+      const driver: CommonDriver<T> = new driverClass(nativeDriver);
       const commandsRunner = new CommandsRunner({
         driver,
         directoryWithScripts: path.join(__dirname, 'sql', 'force-migrate'),
@@ -176,7 +188,8 @@ export async function describeTest<T>(
           .to.be.null;
     });
     it('Should return failed migrations', async () => {
-      const {driver, nativeDriver} = await driverFactory();
+      const nativeDriver: T = await driverFactory();
+      const driver: CommonDriver<T> = new driverClass(nativeDriver);
       const commandsRunner = new CommandsRunner({
         driver,
         directoryWithScripts: path.join(__dirname, 'sql', 'force-migrate'),
@@ -202,6 +215,20 @@ export async function describeTest<T>(
           ['3-insert.sql', new Date(), new Date(1), 'error']);
       const count = await commandsRunner.getFailedMigrations();
       expect(count).to.be.equal(1);
+    });
+    it('The check that driver is passed', async function checkDriverPassed() {
+      if (this.test) {
+        this.test.skipCloseConnection = true;
+      }
+      interface DriverCreatorNoArgs<T> {
+        new(): CommonDriver<T>;
+      }
+      const driverInstance = driverClass as DriverCreatorNoArgs<T>;
+      expect(() => new driverInstance()).to.throw('dbRunner can\'t be null');
+    });
+    it('Check uppercase table', async function checkDriverPassed() {
+      const nativeDriver: T = await driverFactory();
+      expect(() => new driverClass(nativeDriver, 'UpperCase')).to.throw(`Migration table UpperCase can't contain upper case`);
     });
   });
 }
