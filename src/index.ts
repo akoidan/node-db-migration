@@ -16,6 +16,7 @@ export interface Migration {
 export interface CommandDescription {
   description: string;
   run: Function;
+  skipInit?: boolean;
 }
 
 export interface NameCreated {
@@ -339,7 +340,8 @@ export class CommandsRunner {
         description: 'Initialized database for migrations',
         run: async () => {
           await this.doInit();
-        }
+        },
+        skipInit: true,
       },
       fake: {
         description: `Fakes the migrations, marks that files in ${
@@ -380,7 +382,13 @@ export class CommandsRunner {
         run: async () => {
           await this.getFailedMigrations();
         }
-
+      },
+      help: {
+        description: `Prints help`,
+        run: async () => {
+          this.printHelp();
+        },
+        skipInit: true,
       }
     };
   }
@@ -415,10 +423,15 @@ export class CommandsRunner {
   }
 
   async doInit(): Promise<void> {
-    this.logger.info(`Creating migration table...`);
-    await this.runSql(this.driver.createTableSql(), []);
-    await this.runSql(this.driver.createUniqueTableIndex(), []);
-    this.logger.success('DB has been successfully initialized');
+    const exists = await this.checkIfExists();
+    if (!exists) {
+      this.logger.info(`Creating migration table...`);
+      await this.runSql(this.driver.createTableSql(), []);
+      await this.runSql(this.driver.createUniqueTableIndex(), []);
+      this.logger.success('DB has been successfully initialized');
+    } else {
+      this.logger.info('Db already exists');
+    }
   }
 
   async getScriptStr(script: string): Promise<string> {
@@ -545,17 +558,18 @@ export class CommandsRunner {
     }
   }
 
-  async run(command: string): Promise<void> {
+  async run(command: 'init' | 'fake' | 'list' | 'migrate' | 'forceMigrate' | 'resolve' | 'getFailed' | 'help'): Promise<void> {
     
     this.logger.info(`Running command ${command}`);
-    if (this.commands[command]) {
-      const inited: boolean = await this.checkIfExists();
-      if (!inited && command !== 'init') {
-        await this.doInit();
-      } else if (inited && command === 'init') {
-        throw Error('DB is already initialized');
+    const c = this.commands[command];
+    if (c) {
+      if (!c.skipInit) {
+        const inited: boolean = await this.checkIfExists();
+        if (!inited) {
+          throw Error('Db is not initialized');
+        }
       }
-      await this.commands[command].run();
+      await c.run();
     } else {
       this.printHelp();
       throw Error(`Invalid command ${command}`);

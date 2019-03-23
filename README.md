@@ -85,6 +85,7 @@ node yourFile.js command
  - forceMigrate: Installs all new updates from ./diff. If one migration fails it goes to another one.
  - resolve: Marks all failed migrations as resolved
  - getFailed: Show all failed migrations
+ - help: Prints help
 
 #### Different sql directory:
 You can configure path to sqlDirectory passing different path `directoryWithScripts` to `CommandsRunner`. `directoryWithScripts: __dirname + '/migrations/sqls'`
@@ -95,7 +96,7 @@ The default time format is YYYYMMDDHHmm. You can configure date format with `dat
 
 ## Tips:
 - You can also add npm script and run it with `npm run migrate` or something
-- You can also integrate this script into initing script of your server. You can use `migrations.run('migrate')'`. This will automagically migrate database to the latest version
+- You can also integrate this script into initing script of your server. You can use `await migration.run('migrate')`. This will automagically migrate database to the latest version
 - Currently node-db-migration was tested only with [mysql](https://github.com/mysqljs/mysql), [pg](https://node-postgres.com/) and [sqlite3](https://github.com/mapbox/node-sqlite3) But it doesn't depend on any specific implementation of db driver. You can create your own driver:
 
 

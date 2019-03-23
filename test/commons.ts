@@ -17,6 +17,8 @@ import {
 
 import {DriverCreator, SkipAfterEach, SqlRunner} from './types';
 import Context = Mocha.Context;
+import {SinonSandbox, SinonSpy} from "sinon";
+import {SinonSpyStatic} from "sinon";
 
 use(chaiAsPromised);
 use(sinonChai);
@@ -33,6 +35,19 @@ export async function describeTest<T>(
   }
 
   describe(testName, async function asdfsadf() {
+
+    let sandbox: SinonSandbox;
+    let spies: SinonSpy[];
+    beforeEach(() => {
+      spies = [];
+      sandbox = sinon.sandbox.create();
+    });
+
+    afterEach(() => {
+      spies.forEach(e => e.restore());
+      sandbox.restore();
+    });
+
     beforeEach('b', beforeEachFn);
     after(afterFn);
     afterEach(afterEachFn);
@@ -47,16 +62,15 @@ export async function describeTest<T>(
       const tableNames = await sqlRunner(nativeDriver, isInitedSql, []);
       expect(tableNames, 'Migration table should exist').to.have.length(1);
     });
-    it('init should fail if already inited', async () => {
+    it('Command should fail if not inited', async () => {
       const nativeDriver: T = await driverFactory();
       const driver: CommonDriver<T> = new driverClass(nativeDriver);
       const commandsRunner: CommandsRunner = new CommandsRunner({
         driver,
         directoryWithScripts: path.join(__dirname, 'sql', 'list'),
       });
-      await commandsRunner.run('init');
       await assert.isRejected(
-          commandsRunner.run('init'), 'DB is already initialized');
+          commandsRunner.run('list'), 'Db is not initialized');
     });
     it('fake should work', async () => {
       const nativeDriver: T = await driverFactory();
@@ -66,6 +80,7 @@ export async function describeTest<T>(
         directoryWithScripts: path.join(__dirname, 'sql', 'fake'),
       });
       await sqlRunner(nativeDriver, 'CREATE TABLE pet (name VARCHAR(20))', []);
+      await commandsRunner.run('init');
       await commandsRunner.run('fake');
       const pets = await sqlRunner(nativeDriver, 'select * from pet', []);
       const migrations = await sqlRunner<Migration>(
@@ -79,20 +94,20 @@ export async function describeTest<T>(
       expect(pets, 'Pets should be empty').to.be.empty;
     });
     it('find new migrations should return all migration when db is empty',
-       async () => {
-         const nativeDriver: T = await driverFactory();
-         const driver: CommonDriver<T> = new driverClass(nativeDriver);
-         const commandsRunner: CommandsRunner = new CommandsRunner({
-           driver,
-           directoryWithScripts: path.join(__dirname, 'sql', 'list'),
-         });
-         await commandsRunner.run('init');
-         const migrations = await commandsRunner.findNewMigrations();
-         expect(migrations[0].name, 'First migration is 1')
-             .to.be.equal('1-insert.sql');
-         expect(migrations[1].name, 'Second migration is 2')
-             .to.be.equal('2-insert.sql');
-       });
+        async () => {
+          const nativeDriver: T = await driverFactory();
+          const driver: CommonDriver<T> = new driverClass(nativeDriver);
+          const commandsRunner: CommandsRunner = new CommandsRunner({
+            driver,
+            directoryWithScripts: path.join(__dirname, 'sql', 'list'),
+          });
+          await commandsRunner.run('init');
+          const migrations = await commandsRunner.findNewMigrations();
+          expect(migrations[0].name, 'First migration is 1')
+              .to.be.equal('1-insert.sql');
+          expect(migrations[1].name, 'Second migration is 2')
+              .to.be.equal('2-insert.sql');
+        });
     it('Should print only 2nd migration when 1st is exected', async () => {
       const nativeDriver: T = await driverFactory();
       const driver: CommonDriver<T> = new driverClass(nativeDriver);
@@ -120,6 +135,7 @@ export async function describeTest<T>(
         driver,
         directoryWithScripts: path.join(__dirname, 'sql', 'migrate-fail'),
       });
+      await commandsRunner.run('init');
       await assert.isRejected(commandsRunner.run('migrate'));
       const migrations = await getMigrations(nativeDriver);
       expect(migrations, 'Should have 1 migration').to.have.length(1);
@@ -136,6 +152,7 @@ export async function describeTest<T>(
         directoryWithScripts:
             path.join(__dirname, 'sql', 'migrate-fail-multiple'),
       });
+      await commandsRunner.run('init');
       await assert.isRejected(commandsRunner.run('migrate'));
       const migrations = await getMigrations(nativeDriver);
       expect(migrations, 'Should have 2 migrations').to.have.length(2);
@@ -157,6 +174,7 @@ export async function describeTest<T>(
         driver,
         directoryWithScripts: path.join(__dirname, 'sql', 'force-migrate'),
       });
+      await commandsRunner.run('init');
       await assert.isFulfilled(commandsRunner.run('forceMigrate'));
       const migrations = await getMigrations(nativeDriver);
       expect(migrations, 'Should have 3 migrations').to.have.length(3);
@@ -230,9 +248,11 @@ export async function describeTest<T>(
       if (this.test) {
         this.test.skipCloseConnection = true;
       }
+
       interface DriverCreatorNoArgs<T> {
         new(): CommonDriver<T>;
       }
+
       const driverInstance = driverClass as DriverCreatorNoArgs<T>;
       expect(() => new driverInstance()).to.throw('dbRunner can\'t be null');
     });
@@ -240,18 +260,50 @@ export async function describeTest<T>(
       const nativeDriver: T = await driverFactory();
       expect(() => new driverClass(nativeDriver, 'UpperCase')).to.throw(`Migration table UpperCase can't contain upper case`);
     });
-    it('Print Migraiton', async function checkDriverPassed() {
+    it('Print Migration', async function checkDriverPassed() {
       const nativeDriver: T = await driverFactory();
       const driver = new driverClass(nativeDriver);
       const commandRunner = new CommandsRunner({
         driver,
-        directoryWithScripts: path.join(__dirname, 'sql', 'list')
+        directoryWithScripts: path.join(__dirname, 'sql', 'list-print')
       });
+      await commandRunner.run('init');
+      const mySpy: SinonSpy<string[], void> = sandbox.spy(ColoredLogger.prototype, 'info');
+      await commandRunner.run('list');
+      expect(mySpy).to.have.been.calledWith(`New migrations found: 
+  - 1-insert.sql
+  - 2-insert.sql`);
+      spies.push(mySpy);
+    });
+    it('Print help', async function checkDriverPassed() {
+      const nativeDriver: T = await driverFactory();
+      const driver = new driverClass(nativeDriver);
+      const directoryWithScripts = path.join(__dirname, 'sql');
+      const commandRunner = new CommandsRunner({
+        driver,
+        directoryWithScripts
+      });
+      const mySpy : SinonSpy<string[], void>= sinon.spy(ColoredLogger.prototype, 'info');
+      spies.push(mySpy);
+      // const mySpy = sinon.spy(ColoredLogger.prototype, 'info');
+      await commandRunner.run('help');
+      expect(mySpy).to.have.been.calledWith(`Available commands are: \n\u001b[36minit\u001b[0m: Initialized database for migrations\n\u001b[36mfake\u001b[0m: Fakes the migrations, marks that files in ${directoryWithScripts} are executed successfully\n\u001b[36mlist\u001b[0m: Show all unapplied migrations from ${directoryWithScripts}\n\u001b[36mmigrate\u001b[0m: Installs all new updates from ${directoryWithScripts}\n\u001b[36mforceMigrate\u001b[0m: Installs all new updates from ${directoryWithScripts}. If one migration fails it goes to another one.\n\u001b[36mresolve\u001b[0m: Marks all failed migrations as resolved\n\u001b[36mgetFailed\u001b[0m: Show all failed migrations\n\u001b[36mhelp\u001b[0m: Prints help\n`);
+    });
+    it('get Failed migrations', async function checkDriverPassed() {
+      const nativeDriver: T = await driverFactory();
+      const driver = new driverClass(nativeDriver);
+      const directoryWithScripts = path.join(__dirname, 'sql', 'migrate-fail-multiple-print');
+      const commandRunner = new CommandsRunner({
+        driver,
+        directoryWithScripts
+      });
+      await commandRunner.run('init');
 
-      commandRunner.run('init');
-      const mySpy = sinon.spy(ColoredLogger.prototype, 'info');
-      commandRunner.run('list')
-      expect(mySpy).to.have.been.calledWith("foo");
+      await assert.isRejected(commandRunner.run('migrate'));
+      const mySpy: SinonSpy<string[], void> = sinon.spy(ColoredLogger.prototype, 'info');
+      await commandRunner.run('getFailed');
+      expect(mySpy).to.have.been.calledWith(sinon.match(/ - 2-insert\.sql:\n {3}Error:.*\n {3}Ran on: .*/))
+      spies.push(mySpy);
     });
   });
 }
