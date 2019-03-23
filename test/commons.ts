@@ -2,14 +2,24 @@ import {assert, expect, use} from 'chai';
 import * as chaiAsPromised from 'chai-as-promised';
 import {AsyncFunc} from 'mocha';
 import * as path from 'path';
+import * as sinonChai from 'sinon-chai';
+import * as sinon from 'sinon';
 
-import {CommandsRunner, CommonDriver, Driver, Migration} from '../src';
+import {
+  ColoredLogger,
+  CommandsRunner,
+  CommonDriver,
+  Driver,
+  Logger,
+  Migration,
+  Param
+} from '../src';
 
 import {DriverCreator, SkipAfterEach, SqlRunner} from './types';
 import Context = Mocha.Context;
 
 use(chaiAsPromised);
-
+use(sinonChai);
 
 /* tslint:disable:no-unused-expression */
 
@@ -229,6 +239,19 @@ export async function describeTest<T>(
     it('Check uppercase table', async function checkDriverPassed() {
       const nativeDriver: T = await driverFactory();
       expect(() => new driverClass(nativeDriver, 'UpperCase')).to.throw(`Migration table UpperCase can't contain upper case`);
+    });
+    it('Print Migraiton', async function checkDriverPassed() {
+      const nativeDriver: T = await driverFactory();
+      const driver = new driverClass(nativeDriver);
+      const commandRunner = new CommandsRunner({
+        driver,
+        directoryWithScripts: path.join(__dirname, 'sql', 'list')
+      });
+
+      commandRunner.run('init');
+      const mySpy = sinon.spy(ColoredLogger.prototype, 'info');
+      commandRunner.run('list')
+      expect(mySpy).to.have.been.calledWith("foo");
     });
   });
 }

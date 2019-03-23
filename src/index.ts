@@ -76,12 +76,7 @@ export class ColoredLogger implements Logger {
   };
 
   success(text: string): void {
-    console.log(`${this.colors.FgGreen}${text}${
-        this.colors.Reset}`);
-  }
-
-  getColors(): {[id: string]: string} {
-    return this.colors;
+    this.infoParamsColor(`{}`, {color: this.colors.FgGreen, param: text});
   }
 
   info(text: string): void {
@@ -108,7 +103,7 @@ export class ColoredLogger implements Logger {
 
 }
 
-interface Param {
+export interface Param {
   color: string;
   param: string;
 }
@@ -151,10 +146,6 @@ export abstract class CommonDriver<T> implements Driver {
       throw Error(`Migration table ${migrationTable} can't contain upper case`);
     }
     this.migrationTable = tName;
-  }
-
-  getMigrationTable() {
-    return this.migrationTable;
   }
 
   getSeparator(): () => string {
