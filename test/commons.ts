@@ -102,7 +102,7 @@ export async function describeTest<T>(
             directoryWithScripts: path.join(__dirname, 'sql', 'list'),
           });
           await commandsRunner.run('init');
-          const migrations = await commandsRunner.findNewMigrations();
+          const migrations = await commandsRunner.findNewMigrations(false);
           expect(migrations[0].name, 'First migration is 1')
               .to.be.equal('1-insert.sql');
           expect(migrations[1].name, 'Second migration is 2')
@@ -122,7 +122,7 @@ export async function describeTest<T>(
           `insert into migrations (name, run_on, created, error_if_happened) values (${
               sepFn()}, ${sepFn()}, ${sepFn()}, ${sepFn()})`,
           ['1-insert.sql', new Date(), new Date(1), null]);
-      const migrations = await commandsRunner.findNewMigrations();
+      const migrations = await commandsRunner.findNewMigrations(false);
       expect(migrations, 'Exactly 1 unapplied migration should exist')
           .to.have.length(1);
       expect(migrations[0].name, 'First migration is 2')
@@ -263,47 +263,164 @@ export async function describeTest<T>(
     it('Print Migration', async function checkDriverPassed() {
       const nativeDriver: T = await driverFactory();
       const driver = new driverClass(nativeDriver);
-      const commandRunner = new CommandsRunner({
+      const commandsRunner = new CommandsRunner({
         driver,
         directoryWithScripts: path.join(__dirname, 'sql', 'list-print')
       });
-      await commandRunner.run('init');
+      await commandsRunner.run('init');
       const mySpy: SinonSpy<string[], void> = sandbox.spy(ColoredLogger.prototype, 'info');
-      await commandRunner.run('list');
+      spies.push(mySpy);
+      await commandsRunner.run('list');
       expect(mySpy).to.have.been.calledWith(`New migrations found: 
   - 1-insert.sql
   - 2-insert.sql`);
-      spies.push(mySpy);
     });
     it('Print help', async function checkDriverPassed() {
       const nativeDriver: T = await driverFactory();
       const driver = new driverClass(nativeDriver);
       const directoryWithScripts = path.join(__dirname, 'sql');
-      const commandRunner = new CommandsRunner({
+      const commandsRunner = new CommandsRunner({
         driver,
         directoryWithScripts
       });
       const mySpy : SinonSpy<string[], void>= sinon.spy(ColoredLogger.prototype, 'info');
       spies.push(mySpy);
       // const mySpy = sinon.spy(ColoredLogger.prototype, 'info');
-      await commandRunner.run('help');
+      await commandsRunner.run('help');
       expect(mySpy).to.have.been.calledWith(`Available commands are: \n\u001b[36minit\u001b[0m: Initialized database for migrations\n\u001b[36mfake\u001b[0m: Fakes the migrations, marks that files in ${directoryWithScripts} are executed successfully\n\u001b[36mlist\u001b[0m: Show all unapplied migrations from ${directoryWithScripts}\n\u001b[36mmigrate\u001b[0m: Installs all new updates from ${directoryWithScripts}\n\u001b[36mforceMigrate\u001b[0m: Installs all new updates from ${directoryWithScripts}. If one migration fails it goes to another one.\n\u001b[36mresolve\u001b[0m: Marks all failed migrations as resolved\n\u001b[36mgetFailed\u001b[0m: Show all failed migrations\n\u001b[36mhelp\u001b[0m: Prints help\n`);
     });
     it('get Failed migrations', async function checkDriverPassed() {
       const nativeDriver: T = await driverFactory();
       const driver = new driverClass(nativeDriver);
       const directoryWithScripts = path.join(__dirname, 'sql', 'migrate-fail-multiple-print');
-      const commandRunner = new CommandsRunner({
+      const commandsRunner = new CommandsRunner({
         driver,
         directoryWithScripts
       });
-      await commandRunner.run('init');
+      await commandsRunner.run('init');
 
-      await assert.isRejected(commandRunner.run('migrate'));
+      await assert.isRejected(commandsRunner.run('migrate'));
       const mySpy: SinonSpy<string[], void> = sinon.spy(ColoredLogger.prototype, 'info');
-      await commandRunner.run('getFailed');
-      expect(mySpy).to.have.been.calledWith(sinon.match(/ - 2-insert\.sql:\n {3}Error:.*\n {3}Ran on: .*/))
       spies.push(mySpy);
+      await commandsRunner.run('getFailed');
+      expect(mySpy).to.have.been.calledWith(sinon.match(/ - 2-insert\.sql:\n {3}Error:.*\n {3}Ran on: .*/));
+    });
+    it(`twice init shouldn't fail`, async function checkDriverPassed() {
+      const nativeDriver: T = await driverFactory();
+      const driver = new driverClass(nativeDriver);
+      const directoryWithScripts = path.join(__dirname, 'sql');
+      const commandsRunner = new CommandsRunner({
+        driver,
+        directoryWithScripts
+      });
+      await commandsRunner.run('init');
+      const mySpy: SinonSpy<string[], void> = sinon.spy(ColoredLogger.prototype, 'info');
+      spies.push(mySpy);
+      await commandsRunner.run('init');
+      expect(mySpy).to.have.been.calledWith('Db already exists');
+    });
+    it(`Failed sql should have stacktrace`, async function checkDriverPassed() {
+      const nativeDriver: T = await driverFactory();
+      const driver = new driverClass(nativeDriver);
+      const directoryWithScripts = path.join(__dirname, 'sql');
+      const commandsRunner = new CommandsRunner({
+        driver,
+        directoryWithScripts
+      });
+      await expect(commandsRunner.runSql('not a sql', [])).to.eventually.be.rejectedWith(Error);
+    });
+    it(`read sql failed with stacktrace`, async function checkDriverPassed() {
+      const nativeDriver: T = await driverFactory();
+      const driver = new driverClass(nativeDriver);
+      const directoryWithScripts = path.join(__dirname, 'sql');
+      const commandsRunner = new CommandsRunner({
+        driver,
+        directoryWithScripts
+      });
+      await expect(commandsRunner.readSql('not an sql', [])).to.eventually.be.rejectedWith(Error);
+    });
+    it('Print Migration', async function checkDriverPassed() {
+      const nativeDriver: T = await driverFactory();
+      const driver = new driverClass(nativeDriver);
+      const commandsRunner = new CommandsRunner({
+        driver,
+        directoryWithScripts: path.join(__dirname, 'sql', 'list-print')
+      });
+      await commandsRunner.run('init');
+      const mySpy: SinonSpy<string[], void> = sandbox.spy(ColoredLogger.prototype, 'info');
+      spies.push(mySpy);
+      await commandsRunner.run('list');
+      expect(mySpy).to.have.been.calledWith(`New migrations found: 
+  - 1-insert.sql
+  - 2-insert.sql`);
+    });
+    it('Invalid command should throw error', async function checkDriverPassed() {
+      const nativeDriver: T = await driverFactory();
+      const driver = new driverClass(nativeDriver);
+      const commandsRunner = new CommandsRunner({
+        driver,
+        directoryWithScripts: path.join(__dirname, 'sql', 'list-print')
+      });
+      interface CommandsRunnerNoArgs {
+        run(a: string): Promise<void>;
+      }
+      await expect((commandsRunner as unknown as CommandsRunnerNoArgs).run('not_a_command')).to.eventually.be.rejectedWith(Error, 'Invalid command not_a_command');
+    });
+    it('should print no migrations', async function checkDriverPassed() {
+      const nativeDriver: T = await driverFactory();
+      const driver = new driverClass(nativeDriver);
+      const commandsRunner = new CommandsRunner({
+        driver,
+        directoryWithScripts: path.join(__dirname, 'sql', 'one-sucess')
+      });
+      await commandsRunner.run('init');
+      await commandsRunner.run('migrate');
+      const mySpy: SinonSpy<string[], void> = sandbox.spy(ColoredLogger.prototype, 'info');
+      spies.push(mySpy);
+      await commandsRunner.run('migrate');
+      expect(mySpy).to.have.been.calledWith(`No new migrations are available`);
+    });
+    it('failed migrations list is empty', async function checkDriverPassed() {
+      const nativeDriver: T = await driverFactory();
+      const driver = new driverClass(nativeDriver);
+      const commandsRunner = new CommandsRunner({
+        driver,
+        directoryWithScripts: path.join(__dirname, 'sql', 'one-sucess')
+      });
+      await commandsRunner.run('init');
+      await commandsRunner.run('migrate');
+      const mySpy: SinonSpy<string[], void> = sandbox.spy(ColoredLogger.prototype, 'info');
+      spies.push(mySpy);
+      await commandsRunner.run('getFailed');
+      expect(mySpy).to.have.been.calledWith(`No failed migrations found`);
+    });
+    it(`Shouldn't migrate fi failed migration exists`, async function checkDriverPassed() {
+      const nativeDriver: T = await driverFactory();
+      const driver = new driverClass(nativeDriver);
+      const commandsRunner = new CommandsRunner({
+        driver,
+        directoryWithScripts: path.join(__dirname, 'sql', 'migrate-fail')
+      });
+      await commandsRunner.run('init');
+      await expect(commandsRunner.run('migrate')).to.be.rejected;
+      await expect(commandsRunner.run('migrate')).to.be.rejectedWith(Error, /Can't start migrations while having a failed one. Run 'resolve' first. Error details: \n.*/);
+    });
+    it(`should extract unknown error`, async function checkDriverPassed() {
+      const nativeDriver: T = await driverFactory();
+      const driver = new driverClass(nativeDriver);
+      assert.equal(driver.extractError({}), 'Unknown error');
+    });
+    it(`getScriptStr should be rejected if error happened`, async function checkDriverPassed() {
+      const nativeDriver: T = await driverFactory();
+      const driver = new driverClass(nativeDriver);
+      const cr = new CommandsRunner({driver, directoryWithScripts: '/non/existing/path/r23423423'});
+      expect(cr.getScriptStr('/non/existing/path/r23423423')).to.be.rejected;
+    });
+    it(`getFilesMigrations should be rejected if error happened`, async function checkDriverPassed() {
+      const nativeDriver: T = await driverFactory();
+      const driver = new driverClass(nativeDriver);
+      const cr = new CommandsRunner({driver, directoryWithScripts: '/non/existing/path/r23423423'});
+      expect(cr.getFilesMigrations([])).to.be.rejected;
     });
   });
 }

@@ -194,6 +194,18 @@ export abstract class CommonDriver<T> implements Driver {
   abstract isInitedSql(): string;
 
   abstract createTableSql(): string;
+
+  extractError(e: { message?: string; } | null): string | null {
+    if (e) {
+      if (e.message) {
+        return e.message;
+      } else {
+        return 'Unknown error';
+      }
+    } else {
+      return null;
+    }
+  }
 }
 
 export class PsqlDriver extends CommonDriver<Client> {
@@ -226,7 +238,7 @@ export class PsqlDriver extends CommonDriver<Client> {
     return new Promise((resolve) => {
       this.dbRunner.query(sql, params, (err: Error, result: QueryResult) => {
         const newVar: MigrationQueryResult<T> = {
-          error: extractError(err),
+          error: this.extractError(err),
           rows: result ? result.rows : [],
         };
         resolve(newVar);
@@ -244,7 +256,7 @@ export class SQLite3Driver extends CommonDriver<Database> {
   async query(sql: string, params: unknown[]): Promise<string | null> {
     return new Promise((resolve) => {
       this.dbRunner.run(sql, params, (error: Error | null) => {
-        resolve(extractError(error));
+        resolve(this.extractError(error));
       });
     });
   }
@@ -252,7 +264,7 @@ export class SQLite3Driver extends CommonDriver<Database> {
   async executeMultipleStatements<T>(sql: string): Promise<string | null> {
     return new Promise((resolve) => {
       this.dbRunner.exec(sql, (err: Error | null) => {
-        resolve(extractError(err));
+        resolve(this.extractError(err));
       });
     });
   }
@@ -261,7 +273,7 @@ export class SQLite3Driver extends CommonDriver<Database> {
       Promise<MigrationQueryResult<T>> {
     return new Promise((resolve) => {
       this.dbRunner.all(sql, params, (error: Error, result: T[]) => {
-        resolve({error: extractError(error), rows: result});
+        resolve({error: this.extractError(error), rows: result});
       });
     });
   }
@@ -301,25 +313,11 @@ export class MysqlDriver extends CommonDriver<Connection> {
       this.dbRunner.query(
           sql, params,
           (error: MysqlError | null, result: T[], fields?: FieldInfo[]) => {
-            resolve({error: extractError(error), rows: result});
+            resolve({error: this.extractError(error), rows: result});
           });
     });
   }
 }
-
-
-function extractError(e: { message: string; } | null): string | null {
-  if (e) {
-    if (e.message) {
-      return e.message;
-    } else {
-      return 'Unknown error';
-    }
-  } else {
-    return null;
-  }
-}
-
 
 export class CommandsRunner {
   driver: Driver;
@@ -361,14 +359,14 @@ export class CommandsRunner {
         description:
             `Installs all new updates from ${this.directoryWithScripts}`,
         run: async () => {
-          await this.findAndRunMigrations();
+          await this.findAndRunMigrations(false);
         }
       },
       forceMigrate: {
         description: `Installs all new updates from ${
             this.directoryWithScripts}. If one migration fails it goes to another one.`,
         run: async () => {
-          await this.forceRunMigrations();
+          await await this.findAndRunMigrations(true);
         }
       },
       resolve: {
@@ -437,9 +435,9 @@ export class CommandsRunner {
   async getScriptStr(script: string): Promise<string> {
     const filePath = path.join(this.directoryWithScripts, script);
     return new Promise((resolve, reject) => {
-      fs.readFile(filePath, {encoding: 'utf-8'}, (err, data) => {
+      fs.readFile(filePath, {encoding: 'utf-8'}, (err: NodeJS.ErrnoException, data: string) => {
         if (err) {
-          reject(JSON.stringify(err));
+          reject(err.message);
         } else {
           resolve(data);
         }
@@ -469,7 +467,7 @@ export class CommandsRunner {
     });
   }
 
-  async runScript(fileName: string, created: Date, failSilently = false) {
+  async runScript(fileName: string, created: Date, failSilently: boolean) {
     const query: string = await this.getScriptStr(fileName);
     this.logger.infoParams('Executing {} ...', fileName);
     const error: string | null =
@@ -492,7 +490,7 @@ export class CommandsRunner {
         this.driver.markExecuted(), [fileName, created, migrationErr]);
   }
 
-  async findNewMigrations(failSilently = false): Promise<NameCreated[]> {
+  async findNewMigrations(failSilently: boolean): Promise<NameCreated[]> {
     const completedMigrations = await this.getCompletedMigrations(failSilently);
     return await this.getFilesMigrations(completedMigrations);
   }
@@ -501,8 +499,8 @@ export class CommandsRunner {
     return await this.readSql(this.driver.getDbMigrations(), []);
   }
 
-  async getCompletedMigrations(failSilently = false): Promise<Migration[]> {
-    const res = await this.getDbMigrations();
+  async getCompletedMigrations(failSilently: boolean): Promise<Migration[]> {
+    const res: Migration[]= await this.getDbMigrations();
     if (!failSilently) {
       res.forEach(r => {
         if (r.error_if_happened) {
@@ -585,24 +583,14 @@ export class CommandsRunner {
     this.logger.info(`Available commands are: \n${des}`);
   }
 
-  async findAndRunMigrations(failSilently = false): Promise<void> {
-    const newMigrations: NameCreated[] =
-        await this.findNewMigrations(failSilently);
-    if (newMigrations.length > 0) {
-      this.logger.info(`Migrations to run:\n  - ${
-          newMigrations.map(e => e.name).join('\n  - ')}`);
-      await this.runMigrations(newMigrations, failSilently);
-    } else {
-      this.logger.info('No new migrations are available');
-    }
-  }
-
-  async forceRunMigrations() {
-    await this.findAndRunMigrations(true);
+  async findAndRunMigrations(failSilently: boolean): Promise<void> {
+    const newMigrations: NameCreated[] = await this.findNewMigrations(failSilently);
+    this.printMigrations(newMigrations);
+    await this.runMigrations(newMigrations, failSilently);
   }
 
   async fakeAllScripts() {
-    const migrations: NameCreated[] = await this.findNewMigrations();
+    const migrations: NameCreated[] = await this.findNewMigrations(false);
     this.printMigrations(migrations);
     await this.markExecutedAll(migrations);
   }
@@ -617,7 +605,7 @@ export class CommandsRunner {
   }
 
   async printNewMigrations(): Promise<void> {
-    const res: NameCreated[] = await this.findNewMigrations();
+    const res: NameCreated[] = await this.findNewMigrations(false);
     this.printMigrations(res);
   }
 }
