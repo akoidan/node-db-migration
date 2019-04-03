@@ -129,8 +129,7 @@ class MyDriver extends CommonDriver {
 
 Using async code:
 
-```
-javascript
+```javascript
 
 import * as sqlite3 from 'sqlite3';
 import {CommandsRunner, SQLite3Driver} from 'node-db-migration';
