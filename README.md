@@ -2,7 +2,7 @@
 
 [![NPM](https://nodei.co/npm/node-db-migration.png?downloads=true&downloadRank=true&stars=true)](https://nodei.co/npm/node-db-migration/)
 
-Source control for your database. This is the dummies and simplest package that allows you to automatically install new migrations on your database. Just write your migration scripts in bare sql and this script will do the rest of magic for you!
+Source control for your database. This is the dummies and simplest package that allows you to automatically install new migrations on your database. Just write your migration scripts in bare sql and this package will do the rest of magic for you!
 
 ## What this package does is:
  - creates a database table `migrations` (you can configure it with `migrationTable`) that keeps a track on all migration scripts
