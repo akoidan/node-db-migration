@@ -25,7 +25,7 @@ export const DB_NAME = 'node_db_migration_test';
 
 export async function closeConnection(driver: Connection) {
   return new Promise((resolve, reject) => {
-    driver.end((err: MysqlError) => {
+    driver.end((err?: MysqlError) => {
       if (err) {
         reject(err.message);
       } else {
@@ -57,7 +57,8 @@ export function recreateDb(driver: Connection) {
 async function mySqlTest() {
   const dbCreator: Connection = mysql.createConnection({
     'host': 'localhost',
-    'user': 'root',
+    'user': 'pychat',
+    'password': 'pypass',
     'multipleStatements': true,  // if you have multiple sql in your scripts
   });
   await connectDriver(dbCreator);
@@ -65,7 +66,8 @@ async function mySqlTest() {
   await createDb();
   const migrationRunner: Connection = mysql.createConnection({
     'host': 'localhost',
-    'user': 'root',
+    'user': 'pychat',
+    'password': 'pypass',
     'database': DB_NAME,
     'multipleStatements': true,  // if you have multiple sql in your scripts
   });

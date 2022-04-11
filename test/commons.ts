@@ -40,7 +40,7 @@ export async function describeTest<T>(
     let spies: SinonSpy[];
     beforeEach(() => {
       spies = [];
-      sandbox = sinon.sandbox.create();
+      sandbox = sinon.createSandbox();
     });
 
     afterEach(() => {
