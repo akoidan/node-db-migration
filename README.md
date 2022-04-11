@@ -20,9 +20,10 @@ Source control for your database. This is the dummies and simplest package that 
 ### mysql:
 
 ```javascript
-var mysql = require('mysql'); // or mysql2
+const {createConnection} = require('mysql');
+// or const {createConnection} = 'mysql2';
 let {CommandsRunner, MysqlDriver} = require('node-db-migration');
-var connection = mysql.createConnection({
+let connection = createConnection({
     "host" : "localhost",
     "user" : "root",
     "database" : "test8",
