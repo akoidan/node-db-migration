@@ -29,12 +29,13 @@ let connection = createConnection({
     "database" : "test8",
     "multipleStatements" : true, // if you have multiple sql in your scripts
 });
-connection.connect(function(err) {
+connection.connect(async (err) {
     let migrations = new CommandsRunner({
         driver: new MysqlDriver(connection),
         directoryWithScripts: __dirname + '/diff',
     });
-    migrations.run(process.argv[2])
+    await migrations.run(process.argv[2])
+    await new Promise((resolve, reject) => connection.end((err) =>err ? reject() : resolve(undefined)));
 });
 ```
 
