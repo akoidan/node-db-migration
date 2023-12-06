@@ -36,7 +36,7 @@
   },
   "homepage": "https://github.com/akoidan/node-db-migration#readme",
   "dependencies": {
-    "moment": "*"
+    "moment": "2.29.4"
   },
   "devDependencies": {
     "@types/chai": "^4.1.4",
